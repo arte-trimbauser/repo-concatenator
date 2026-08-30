@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>GitHub Repo Concatenator</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    textarea { width: 100%; height: 400px; margin-top: 10px; }
+    button { padding: 10px 20px; cursor: pointer; }
+    #status { margin-top: 10px; color: green; }
+  </style>
+</head>
+<body>
+  <h1>Cole o link do repositório GitHub</h1>
+  <input type="text" id="repoUrl" placeholder="https://github.com/usuario/repo/tree/main" style="width: 100%; padding: 8px;">
+  <button onclick="fetchRepo()">Buscar códigos</button>
+  <div id="status"></div>
+  <textarea id="output" placeholder="Os códigos aparecerão aqui..."></textarea>
+  <button onclick="copyAll()">Copiar tudo</button>
+
+  <script src="script.js"></script>
+</body>
+</html>

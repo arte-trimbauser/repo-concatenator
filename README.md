@@ -4,9 +4,11 @@ Uma ferramenta web simples e eficiente para concatenar ficheiros de repositório
 
 ## 🚀 Funcionalidades
 
-- **📥 Download (Concatenar):** Baixa e junta ficheiros de código de qualquer repositório GitHub público ou ramo específico num único bloco de texto formatado.
+- **📥 Download (Concatenar):** Baixa e junta ficheiros de código de qualquer repositório GitHub público ou ramo/pasta específica num único bloco de texto formatado.
 - **📤 Upload (Atualizar Repo):** Lê blocos de código formatados com o padrão `// ===== ARQUIVO: caminho/ficheiro.ext =====` e atualiza/cria os ficheiros diretamente no GitHub.
-- **🤖 Modo IA (com Gemini):** Permite dar instruções em linguagem natural para modificar o código do repositório automaticamente.
+- **🔍 Modo Preview & Code Review:** Visualize e reveja ficheiros alterados ou criados pela IA antes de fazer commit no repositório.
+- **🤖 Modo IA Seguro (com Gemini):** Permite dar instruções em linguagem natural com suporte a modo "Dry Run" (sem commit automático), limite de contexto personalizável e parser tolerante a erros de formatação.
+- **🔒 Segurança de Tokens:** Transmissão segura de tokens sem armazenamento local persistente não autorizado.
 
 ## ⚙️ Configuração das Variáveis de Ambiente
 

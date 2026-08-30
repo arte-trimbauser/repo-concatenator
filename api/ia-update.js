@@ -71,12 +71,12 @@ O utilizador vai dar uma instrução. Deves:
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
     let model;
-    let modelName = 'gemini-2.5-flash';
+    let modelName = 'gemini-3.6-flash';
     try {
       model = genAI.getGenerativeModel({ model: modelName });
     } catch (err) {
-      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-2.5-pro...`);
-      modelName = 'gemini-2.5-pro';
+      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-3.7-flash...`);
+      modelName = 'gemini-3.7-flash';
       model = genAI.getGenerativeModel({ model: modelName });
     }
 
@@ -130,7 +130,7 @@ O utilizador vai dar uma instrução. Deves:
     res.json({
       message: `${successCount} ficheiro(s) atualizado(s) com IA (modelo ${modelName}).${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
       details: results,
-      aiOutput: aiOutput.substring(0, 1000)
+      aiOutput: aiOutput
     });
 
   } catch (error) {

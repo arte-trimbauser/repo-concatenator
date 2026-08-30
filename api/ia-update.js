@@ -11,7 +11,6 @@ export default async function handler(req, res) {
 
   const { repoUrl, prompt, owner, repo, branch, token } = req.body;
 
-  // Extrair info da URL do GitHub
   const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/([^\/]+))?/);
   if (!match) {
     return res.status(400).json({ error: 'URL do GitHub inválida' });
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Buscar a árvore de ficheiros do repositório
+    // 1. Buscar árvore do repositório
     const treeRes = await fetch(
       `https://api.github.com/repos/${finalOwner}/${finalRepo}/git/trees/${finalBranch}?recursive=1`,
       { headers: { Authorization: `token ${finalToken}` } }
@@ -40,10 +39,10 @@ export default async function handler(req, res) {
     }
     const treeData = await treeRes.json();
 
-    // 2. Obter conteúdo dos ficheiros (apenas os que interessam)
+    // 2. Obter conteúdo dos ficheiros
     const files = treeData.tree
       .filter(f => f.type === 'blob' && /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql)$/i.test(f.path))
-      .slice(0, 30); // Limite para não sobrecarregar a IA
+      .slice(0, 30);
 
     let context = '';
     for (const file of files) {
@@ -55,7 +54,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. Montar o prompt para o Gemini
+    // 3. Montar prompt
     const systemPrompt = `
 Tu és um assistente de código que modifica ficheiros de um repositório GitHub.
 Recebes uma lista de ficheiros com o formato:
@@ -72,9 +71,9 @@ O utilizador vai dar uma instrução. Deves:
 
     const userPrompt = `Instrução: ${prompt}\n\nContexto do repositório:\n${context}`;
 
-    // 4. Chamar a API do Gemini (grátis!)
+    // 4. Chamar Gemini (CORRIGIDO - versão v1)
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,16 +105,16 @@ O utilizador vai dar uma instrução. Deves:
       throw new Error('A IA não devolveu conteúdo.');
     }
 
-    // 5. Parse do output da IA (extrair ficheiros)
+    // 5. Parse do output da IA
     const filesToUpdate = parseFiles(aiOutput);
 
     if (filesToUpdate.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'A IA não gerou ficheiros válidos. Resposta da IA:\n' + aiOutput.substring(0, 500)
       });
     }
 
-    // 6. Enviar cada ficheiro para o GitHub
+    // 6. Enviar para o GitHub
     const results = [];
     for (const file of filesToUpdate) {
       const result = await uploadFileToGitHub(
@@ -140,7 +139,7 @@ O utilizador vai dar uma instrução. Deves:
     res.json({
       message: `${successCount} ficheiro(s) atualizado(s) com IA.${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
       details: results,
-      aiOutput: aiOutput.substring(0, 1000) // preview para depuração
+      aiOutput: aiOutput.substring(0, 1000)
     });
 
   } catch (error) {

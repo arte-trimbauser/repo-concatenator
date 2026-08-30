@@ -73,7 +73,7 @@ O utilizador vai dar uma instrução. Deves:
 
     // 4. Chamar Gemini com gemini-pro (estável e gratuito)
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -2,22 +2,326 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GitHub Repo Concatenator</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    textarea { width: 100%; height: 400px; margin-top: 10px; }
-    button { padding: 10px 20px; cursor: pointer; }
-    #status { margin-top: 10px; color: green; }
+    /* ===== CSS Variables para temas ===== */
+    :root {
+      --bg-body: #fafafa;
+      --bg-container: #ffffff;
+      --text-color: #1a1a1a;
+      --border-color: #ccc;
+      --input-bg: #fff;
+      --input-text: #333;
+      --btn-bg: #2ea44f;
+      --btn-text: #fff;
+      --btn-hover: #22863a;
+      --status-color: green;
+      --nav-link: #0366d6;
+      --nav-link-active: #000;
+      --nav-border: #ddd;
+      --info-bg: #e1f0fa;
+      --info-border: #0366d6;
+      --details-bg: #f6f8fa;
+    }
+
+    body.dark {
+      --bg-body: #1a1a1a;
+      --bg-container: #2d2d2d;
+      --text-color: #e0e0e0;
+      --border-color: #555;
+      --input-bg: #3d3d3d;
+      --input-text: #eee;
+      --btn-bg: #2ea44f;
+      --btn-text: #fff;
+      --btn-hover: #3fb950;
+      --status-color: #7ee787;
+      --nav-link: #58a6ff;
+      --nav-link-active: #f0f0f0;
+      --nav-border: #444;
+      --info-bg: #1e3a4d;
+      --info-border: #58a6ff;
+      --details-bg: #2d2d2d;
+    }
+
+    /* ===== Estilos gerais ===== */
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--bg-body);
+      color: var(--text-color);
+      transition: background 0.3s, color 0.3s;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--bg-container);
+      padding: 25px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+    /* ===== Toggle ===== */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .nav {
+      display: flex;
+      gap: 20px;
+    }
+    .nav a {
+      text-decoration: none;
+      color: var(--nav-link);
+      font-weight: 600;
+      padding-bottom: 6px;
+      border-bottom: 2px solid transparent;
+      transition: 0.2s;
+    }
+    .nav a.active {
+      color: var(--nav-link-active);
+      border-bottom-color: var(--nav-link);
+    }
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 30px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      background: var(--input-bg);
+      color: var(--text-color);
+      transition: 0.3s;
+    }
+    .theme-toggle:hover {
+      opacity: 0.8;
+    }
+    /* ===== Formulário ===== */
+    label { display: block; font-weight: 600; margin: 12px 0 4px; }
+    input, textarea, button {
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      transition: 0.3s;
+    }
+    textarea {
+      width: 100%;
+      height: 400px;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      margin-top: 10px;
+      transition: 0.3s;
+      resize: vertical;
+    }
+    button {
+      padding: 10px 24px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: var(--btn-hover);
+      transform: translateY(-1px);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    #status {
+      margin: 15px 0;
+      font-weight: bold;
+      color: var(--status-color);
+    }
+    .info-box {
+      background: var(--info-bg);
+      border-left: 4px solid var(--info-border);
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin: 15px 0 20px;
+      font-size: 0.95rem;
+    }
+    .details {
+      background: var(--details-bg);
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      display: none;
+    }
+    .error { color: #d73a4a; }
+    .success { color: var(--status-color); }
   </style>
 </head>
 <body>
-  <h1>Cole o link do repositório GitHub</h1>
-  <input type="text" id="repoUrl" placeholder="https://github.com/usuario/repo/tree/main" style="width: 100%; padding: 8px;">
-  <button onclick="fetchRepo()">Buscar códigos</button>
-  <div id="status"></div>
-  <textarea id="output" placeholder="Os códigos aparecerão aqui..."></textarea>
-  <button onclick="copyAll()">Copiar tudo</button>
 
-  <script src="script.js"></script>
+<div class="container">
+  <!-- Top Bar: Navegação + Toggle -->
+  <div class="top-bar">
+    <div class="nav">
+      <a href="/index.html" class="active">📥 Download (Concatenar)</a>
+      <a href="/upload.html">📤 Upload (Atualizar Repo)</a>
+    </div>
+    <button class="theme-toggle" id="themeToggle" title="Alternar tema">🌙</button>
+  </div>
+
+  <h1>📥 Concatenador de Repositórios GitHub</h1>
+  <div class="info-box">
+    Cole o link do repositório (ex: <code>https://github.com/usuario/repo/tree/main</code>) e clique em <strong>Buscar códigos</strong>.<br>
+    O resultado aparecerá com cabeçalhos <code>// ===== ARQUIVO: caminho =====</code>.
+  </div>
+
+  <label for="repoUrl">🔗 URL do repositório</label>
+  <input type="text" id="repoUrl" placeholder="https://github.com/usuario/repo/tree/main">
+
+  <button onclick="fetchRepo()" id="fetchBtn">🔍 Buscar códigos</button>
+  <div id="status"></div>
+
+  <textarea id="output" placeholder="Os códigos aparecerão aqui..."></textarea>
+  <div class="btn-row">
+    <button onclick="copyAll()">📋 Copiar tudo</button>
+    <button onclick="limparOutput()">🗑️ Limpar</button>
+  </div>
+  <div id="details" class="details"></div>
+</div>
+
+<script src="script.js"></script>
+<script>
+  // ===== Tema (dark/light) =====
+  const toggleBtn = document.getElementById('themeToggle');
+  const body = document.body;
+
+  function setTheme(theme) {
+    if (theme === 'dark') {
+      body.classList.add('dark');
+      toggleBtn.textContent = '☀️';
+    } else {
+      body.classList.remove('dark');
+      toggleBtn.textContent = '🌙';
+    }
+    localStorage.setItem('theme', theme);
+  }
+
+  // Carregar preferência salva ou sistema
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    setTheme(savedTheme);
+  } else {
+    // Detecta preferência do sistema
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(prefersDark ? 'dark' : 'light');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    const isDark = body.classList.contains('dark');
+    setTheme(isDark ? 'light' : 'dark');
+  });
+
+  // ===== Funções auxiliares (mantidas do script.js) =====
+  async function fetchRepo() {
+    const urlInput = document.getElementById('repoUrl').value.trim();
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+    const fetchBtn = document.getElementById('fetchBtn');
+    status.textContent = '⏳ A buscar...';
+    output.value = '';
+    fetchBtn.disabled = true;
+
+    const match = urlInput.match(/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/([^\/]+)(?:\/(.+))?)?/);
+    if (!match) {
+      status.innerHTML = '<span class="error">URL inválida. Use o formato: https://github.com/usuario/repo/tree/branch</span>';
+      fetchBtn.disabled = false;
+      return;
+    }
+
+    const owner = match[1];
+    const repo = match[2];
+    const branch = match[3] || 'main';
+    const basePath = match[4] ? match[4] + '/' : '';
+
+    try {
+      const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+      if (!treeResponse.ok) throw new Error(`HTTP ${treeResponse.status}`);
+      const treeData = await treeResponse.json();
+
+      const files = treeData.tree.filter(item =>
+        item.type === 'blob' &&
+        item.path.startsWith(basePath) &&
+        /\.(js|ts|py|html|css|json|md|java|cpp|c|php|rb|go|rs|swift|kt|sh|yml|yaml|xml|sql|txt|vue|jsx|tsx|scss|less)$/i.test(item.path)
+      );
+
+      if (files.length === 0) {
+        status.textContent = 'Nenhum arquivo de código encontrado.';
+        fetchBtn.disabled = false;
+        return;
+      }
+
+      let result = '';
+      for (const file of files) {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
+        try {
+          const contentResponse = await fetch(rawUrl);
+          if (contentResponse.ok) {
+            const content = await contentResponse.text();
+            result += `\n\n// ===== ARQUIVO: ${file.path} =====\n\n${content}`;
+          } else {
+            result += `\n\n// ===== ARQUIVO: ${file.path} (erro ao carregar) =====\n`;
+          }
+        } catch (err) {
+          result += `\n\n// ===== ARQUIVO: ${file.path} (erro de rede) =====\n`;
+        }
+      }
+
+      output.value = result;
+      status.textContent = `✅ Encontrados ${files.length} arquivos.`;
+    } catch (error) {
+      status.innerHTML = `<span class="error">❌ Erro: ${error.message}</span>`;
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  }
+
+  function copyAll() {
+    const output = document.getElementById('output');
+    output.select();
+    document.execCommand('copy');
+    alert('📋 Copiado para a área de transferência!');
+  }
+
+  function limparOutput() {
+    document.getElementById('output').value = '';
+    document.getElementById('status').textContent = '';
+  }
+</script>
+
 </body>
 </html>

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   const finalToken = token || GITHUB_TOKEN;
 
   if (!finalToken) {
-    return res.status(400).json({ error: 'Token do GitHub necessário' });
+    return res.status(400).json({ error: 'Token do GitHub necessário para atualização' });
   }
 
   try {
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     if (filesToUpdate.length === 0) {
       return res.status(400).json({
-        error: 'Nenhum ficheiro válido encontrado no texto fornecido. Verifique o cabeçalho no formato "// ===== ARQUIVO: caminho/ficheiro.ext =====".'
+        error: 'Nenhum ficheiro válido encontrado no texto. Certifique-se de usar o formato "// ===== ARQUIVO: caminho/ficheiro.ext =====".'
       });
     }
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
 
-    if (process.env.VERCEL_DEPLOY_HOOK) {
+    if (process.env.VERCEL_DEPLOY_HOOK && successCount > 0) {
       try {
         await fetch(process.env.VERCEL_DEPLOY_HOOK, { method: 'POST' });
       } catch (e) {
@@ -64,13 +64,16 @@ export default async function handler(req, res) {
 
 function parseFiles(text) {
   const files = [];
-  const regex = /\/\/\s*={5,}\s*ARQUIVO:\s*([^\n]+?)\s*={5,}\s*\n\n([\s\S]*?)(?=\n\n\/\/\s*={5,}\s*ARQUIVO:|$)/g;
+  const normalizedText = text.replace(/\r\n/g, '\n');
+  
+  const regex = /(?:\/\/\s*|#\s*|\/\*\s*)?={3,}\s*ARQUIVO:\s*([^\n]+?)\s*={3,}(?:\s*\*\/)?\n+([\s\S]*?)(?=(?:\n(?:\/\/\s*|#\s*|\/\*\s*)?={3,}\s*ARQUIVO:|$))/gi;
+
   let match;
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(normalizedText)) !== null) {
     const path = match[1].trim();
     let content = match[2];
     content = content.replace(/^\n+/, '').replace(/\n+$/, '');
-    if (path && content) {
+    if (path) {
       files.push({ path, content });
     }
   }
@@ -100,7 +103,7 @@ async function uploadFileToGitHub(owner, repo, branch, token, path, content) {
 
   const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
   const payload = {
-    message: `Atualização manual via Repo Concatenator: ${path}`,
+    message: `Atualização via Repo Concatenator: ${path}`,
     content: encodedContent,
     branch: branch
   };

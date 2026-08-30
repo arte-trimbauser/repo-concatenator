@@ -18,6 +18,10 @@
     .error { color: #d73a4a; }
     .details { background: #f6f8fa; padding: 15px; border-radius: 6px; margin-top: 10px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; overflow-x: auto; }
     .info-box { background: #e1f0fa; border-left: 4px solid #0366d6; padding: 12px; border-radius: 4px; margin-bottom: 20px; }
+    .form-group { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
+    .form-group .field { flex: 1; min-width: 150px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -30,7 +34,27 @@
   <h1>📤 Atualizar Repositório GitHub</h1>
   <div class="info-box">
     Cole abaixo o texto gerado pela ferramenta de download (com os cabeçalhos <code>// ===== ARQUIVO: ...</code>).<br>
-    Todos os ficheiros serão criados ou atualizados no repositório configurado.
+    Todos os ficheiros serão criados ou atualizados no repositório indicado.
+  </div>
+
+  <!-- NOVOS CAMPOS -->
+  <div class="form-group">
+    <div class="field">
+      <label for="repoOwner">👤 Dono (owner)</label>
+      <input type="text" id="repoOwner" placeholder="ex: joaosilva">
+    </div>
+    <div class="field">
+      <label for="repoName">📁 Repositório</label>
+      <input type="text" id="repoName" placeholder="ex: meu-projeto">
+    </div>
+    <div class="field">
+      <label for="repoBranch">🌿 Branch</label>
+      <input type="text" id="repoBranch" placeholder="main" value="main">
+    </div>
+    <div class="field" style="flex: 2;">
+      <label for="repoToken">🔑 Token (opcional)</label>
+      <input type="password" id="repoToken" placeholder="Deixe em branco para usar o token global">
+    </div>
   </div>
 
   <textarea id="inputText" placeholder="Cole aqui o texto do repo-concatenator..."></textarea>
@@ -42,12 +66,22 @@
   <script>
     async function updateRepo() {
       const text = document.getElementById('inputText').value.trim();
+      const owner = document.getElementById('repoOwner').value.trim();
+      const repo = document.getElementById('repoName').value.trim();
+      const branch = document.getElementById('repoBranch').value.trim() || 'main';
+      const token = document.getElementById('repoToken').value.trim();
+
       const status = document.getElementById('status');
       const details = document.getElementById('details');
       const btn = document.getElementById('updateBtn');
 
+      // Validações
       if (!text) {
         status.innerHTML = '<span class="error">⚠️ Por favor, cole o texto.</span>';
+        return;
+      }
+      if (!owner || !repo) {
+        status.innerHTML = '<span class="error">⚠️ Preencha Dono e Repositório.</span>';
         return;
       }
 
@@ -57,10 +91,13 @@
       details.style.display = 'none';
 
       try {
+        const payload = { text, owner, repo, branch };
+        if (token) payload.token = token;
+
         const response = await fetch('/api/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          body: JSON.stringify(payload)
         });
 
         const data = await response.json();

@@ -20,6 +20,8 @@
       --info-bg: #e1f0fa;
       --info-border: #0366d6;
       --details-bg: #f6f8fa;
+      --ai-bg: #e8f0fe;
+      --ai-border: #1a73e8;
     }
     body.dark {
       --bg: #1e1e1e;
@@ -35,11 +37,13 @@
       --info-bg: #1e2a3a;
       --info-border: #58a6ff;
       --details-bg: #2d2d2d;
+      --ai-bg: #1e2a3a;
+      --ai-border: #58a6ff;
     }
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 900px;
+      max-width: 1000px;
       margin: 30px auto;
       padding: 0 20px;
       background-color: var(--bg);
@@ -116,7 +120,7 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
-    #status {
+    #status, #aiStatus {
       margin: 15px 0;
       font-weight: bold;
       color: var(--status-color);
@@ -172,6 +176,56 @@
       box-sizing: border-box;
       transition: background 0.3s, color 0.3s;
     }
+    /* ===== IA SECTION ===== */
+    .ai-box {
+      background: var(--ai-bg);
+      border-left: 4px solid var(--ai-border);
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+    .ai-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 25px;
+      padding: 15px;
+      background: var(--input-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .ai-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ai-row input {
+      flex: 2;
+      min-width: 200px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .ai-row button {
+      flex: 0;
+      background: #1a73e8;
+    }
+    .ai-row button:hover {
+      background: #1557b0;
+    }
+    .ai-prompt {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+    }
   </style>
 </head>
 <body>
@@ -211,6 +265,20 @@
     </div>
   </div>
 
+  <!-- ===== SECÇÃO IA (NOVA) ===== -->
+  <div class="ai-box">
+    <strong>🤖 Modo IA (grátis com Gemini)</strong> – Dá uma instrução em português e a IA modifica o código automaticamente.
+  </div>
+  <div class="ai-container">
+    <div class="ai-row">
+      <input type="text" id="aiRepoUrl" placeholder="https://github.com/usuario/repo/tree/main">
+      <button onclick="executarIA()" id="aiBtn">🤖 Executar IA</button>
+    </div>
+    <textarea id="aiPrompt" class="ai-prompt" rows="3" placeholder="Ex: Adiciona um ficheiro .env.example com as variáveis GEMINI_API_KEY e GITHUB_TOKEN, e atualiza o README.md para explicar como configurar."></textarea>
+    <div id="aiStatus"></div>
+  </div>
+
+  <!-- TEXTAREA PARA COLAR/CARREGAR -->
   <textarea id="inputText" placeholder="Cole aqui o texto do repo-concatenator..."></textarea>
   <br><br>
   <button id="updateBtn" onclick="updateRepo()">📤 Enviar para o GitHub</button>
@@ -233,7 +301,7 @@
       });
     })();
 
-    // ===== FUNÇÃO DE UPLOAD =====
+    // ===== FUNÇÃO DE UPLOAD (MANUAL) =====
     async function updateRepo() {
       const text = document.getElementById('inputText').value.trim();
       const owner = document.getElementById('repoOwner').value.trim();
@@ -285,6 +353,62 @@
       } finally {
         btn.disabled = false;
         btn.textContent = '📤 Enviar para o GitHub';
+      }
+    }
+
+    // ===== FUNÇÃO DE IA (GEMINI) =====
+    async function executarIA() {
+      const repoUrl = document.getElementById('aiRepoUrl').value.trim();
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      const owner = document.getElementById('repoOwner').value.trim();
+      const repo = document.getElementById('repoName').value.trim();
+      const branch = document.getElementById('repoBranch').value.trim() || 'main';
+      const token = document.getElementById('repoToken').value.trim();
+
+      const status = document.getElementById('aiStatus');
+      const btn = document.getElementById('aiBtn');
+
+      if (!repoUrl) {
+        status.innerHTML = '<span class="error">⚠️ Cola o link do repositório.</span>';
+        return;
+      }
+      if (!prompt) {
+        status.innerHTML = '<span class="error">⚠️ Escreve a instrução para a IA.</span>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ A IA está a pensar...';
+      status.innerHTML = '⏳ A analisar o repositório e a gerar código...';
+
+      try {
+        const response = await fetch('/api/ia-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repoUrl, prompt, owner, repo, branch, token })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+
+        status.innerHTML = `<span class="success">✅ ${data.message}</span>`;
+        // Opcional: mostra o output da IA na textarea para revisão
+        if (data.aiOutput) {
+          const textarea = document.getElementById('inputText');
+          textarea.value = data.aiOutput;
+          // Mostra também os detalhes
+          const detailsDiv = document.getElementById('details');
+          detailsDiv.style.display = 'block';
+          detailsDiv.textContent = JSON.stringify(data.details, null, 2);
+        }
+      } catch (err) {
+        status.innerHTML = `<span class="error">❌ Erro: ${err.message}</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Executar IA';
       }
     }
   </script>

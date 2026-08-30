@@ -71,12 +71,12 @@ O utilizador vai dar uma instrução. Deves:
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
     let model;
-    let modelName = 'gemini-2.0-flash';
+    let modelName = 'gemini-3.6-flash';
     try {
       model = genAI.getGenerativeModel({ model: modelName });
     } catch (err) {
-      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-1.5-flash...`);
-      modelName = 'gemini-1.5-flash';
+      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-3.7-flash...`);
+      modelName = 'gemini-3.7-flash';
       model = genAI.getGenerativeModel({ model: modelName });
     }
 

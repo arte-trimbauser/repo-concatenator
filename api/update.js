@@ -1,24 +1,33 @@
 // api/update.js
 import fetch from 'node-fetch';
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_OWNER = process.env.GITHUB_OWNER;
-const GITHUB_REPO = process.env.GITHUB_REPO;
-const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+// Variáveis de ambiente (fallback)
+const ENV_TOKEN = process.env.GITHUB_TOKEN;
+const ENV_OWNER = process.env.GITHUB_OWNER;
+const ENV_REPO = process.env.GITHUB_REPO;
+const ENV_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const { text } = req.body;
+  const { text, owner, repo, branch, token } = req.body;
+
+  // Usa o que for fornecido, senão fallback para env
+  const finalOwner = owner || ENV_OWNER;
+  const finalRepo = repo || ENV_REPO;
+  const finalBranch = branch || ENV_BRANCH;
+  const finalToken = token || ENV_TOKEN;
+
   if (!text) {
     return res.status(400).json({ error: 'Texto não fornecido' });
   }
-
-  if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-    console.error('Variáveis de ambiente faltando:', { GITHUB_TOKEN: !!GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO });
-    return res.status(500).json({ error: 'Configuração do servidor incompleta' });
+  if (!finalOwner || !finalRepo) {
+    return res.status(400).json({ error: 'Dono e repositório são obrigatórios (forneça no formulário ou nas variáveis de ambiente).' });
+  }
+  if (!finalToken) {
+    return res.status(400).json({ error: 'Token não fornecido (coloque no formulário ou na variável de ambiente GITHUB_TOKEN).' });
   }
 
   try {
@@ -29,7 +38,14 @@ export default async function handler(req, res) {
 
     const results = [];
     for (const file of files) {
-      const result = await uploadFileToGitHub(file.path, file.content);
+      const result = await uploadFileToGitHub(
+        finalOwner,
+        finalRepo,
+        finalBranch,
+        finalToken,
+        file.path,
+        file.content
+      );
       results.push({ path: file.path, success: result.success, message: result.message });
     }
 
@@ -39,7 +55,6 @@ export default async function handler(req, res) {
       message: `${successCount} ficheiro(s) atualizado(s) com sucesso.${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
       details: results
     });
-
   } catch (error) {
     console.error('Erro no servidor:', error);
     res.status(500).json({ error: 'Erro interno: ' + error.message });
@@ -61,17 +76,17 @@ function parseFiles(text) {
   return files;
 }
 
-async function uploadFileToGitHub(path, content) {
-  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
+async function uploadFileToGitHub(owner, repo, branch, token, path, content) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const headers = {
+    Authorization: `token ${token}`,
+    Accept: 'application/vnd.github.v3+json'
+  };
 
+  // Obter SHA (se existir)
   let sha = null;
   try {
-    const getRes = await fetch(url, {
-      headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github.v3+json'
-      }
-    });
+    const getRes = await fetch(url, { headers });
     if (getRes.ok) {
       const data = await getRes.json();
       sha = data.sha;
@@ -87,7 +102,7 @@ async function uploadFileToGitHub(path, content) {
   const payload = {
     message: `Atualização automática via repo-updater: ${path}`,
     content: encodedContent,
-    branch: GITHUB_BRANCH
+    branch: branch
   };
   if (sha) payload.sha = sha;
 
@@ -95,8 +110,7 @@ async function uploadFileToGitHub(path, content) {
     const putRes = await fetch(url, {
       method: 'PUT',
       headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github.v3+json',
+        ...headers,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)

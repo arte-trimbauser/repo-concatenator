@@ -1,65 +1,145 @@
-// api/update.js
+// api/ia-update.js
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import fetch from 'node-fetch';
 
-// Variáveis de ambiente (fallback)
-const ENV_TOKEN = process.env.GITHUB_TOKEN;
-const ENV_OWNER = process.env.GITHUB_OWNER;
-const ENV_REPO = process.env.GITHUB_REPO;
-const ENV_BRANCH = process.env.GITHUB_BRANCH || 'main';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const { text, owner, repo, branch, token } = req.body;
+  const { repoUrl, prompt, owner, repo, branch, token } = req.body;
 
-  // Usa o que for fornecido, senão fallback para env
-  const finalOwner = owner || ENV_OWNER;
-  const finalRepo = repo || ENV_REPO;
-  const finalBranch = branch || ENV_BRANCH;
-  const finalToken = token || ENV_TOKEN;
+  const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/([^\/]+))?/);
+  if (!match) {
+    return res.status(400).json({ error: 'URL do GitHub inválida' });
+  }
 
-  if (!text) {
-    return res.status(400).json({ error: 'Texto não fornecido' });
-  }
-  if (!finalOwner || !finalRepo) {
-    return res.status(400).json({ error: 'Dono e repositório são obrigatórios (forneça no formulário ou nas variáveis de ambiente).' });
-  }
+  const finalOwner = owner || match[1];
+  const finalRepo = repo || match[2];
+  const finalBranch = branch || match[3] || 'main';
+  const finalToken = token || GITHUB_TOKEN;
+
   if (!finalToken) {
-    return res.status(400).json({ error: 'Token não fornecido (coloque no formulário ou na variável de ambiente GITHUB_TOKEN).' });
+    return res.status(400).json({ error: 'Token do GitHub necessário' });
+  }
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY não configurada' });
   }
 
   try {
-    const files = parseFiles(text);
-    if (files.length === 0) {
-      return res.status(400).json({ error: 'Nenhum ficheiro encontrado no texto.' });
+    // 1. Buscar árvore do repositório
+    const treeRes = await fetch(
+      `https://api.github.com/repos/${finalOwner}/${finalRepo}/git/trees/${finalBranch}?recursive=1`,
+      { headers: { Authorization: `token ${finalToken}` } }
+    );
+    if (!treeRes.ok) {
+      throw new Error(`GitHub API error: ${treeRes.status}`);
+    }
+    const treeData = await treeRes.json();
+
+    // 2. Obter conteúdo dos ficheiros (limitado a 30)
+    const files = treeData.tree
+      .filter(f => f.type === 'blob' && /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql)$/i.test(f.path))
+      .slice(0, 30);
+
+    let context = '';
+    for (const file of files) {
+      const rawUrl = `https://raw.githubusercontent.com/${finalOwner}/${finalRepo}/${finalBranch}/${file.path}`;
+      const contentRes = await fetch(rawUrl);
+      if (contentRes.ok) {
+        const content = await contentRes.text();
+        context += `\n// ===== ARQUIVO: ${file.path} =====\n\n${content}\n`;
+      }
     }
 
+    // 3. Montar prompt
+    const systemPrompt = `
+Tu és um assistente de código que modifica ficheiros de um repositório GitHub.
+Recebes uma lista de ficheiros com o formato:
+// ===== ARQUIVO: caminho/ficheiro.ext =====
+conteúdo do ficheiro
+
+O utilizador vai dar uma instrução. Deves:
+- Modificar os ficheiros existentes conforme necessário.
+- Criar novos ficheiros se for pedido.
+- Responder APENAS com o texto no formato acima (com os cabeçalhos // ===== ARQUIVO: ...).
+- Não adicionar texto extra, apenas os ficheiros modificados.
+- Mantém a estrutura exata dos ficheiros que não mudaram.
+`;
+
+    const userPrompt = `Instrução: ${prompt}\n\nContexto do repositório:\n${context}`;
+
+    // 4. Chamar Gemini usando a biblioteca oficial (modelo mais estável)
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    // Tenta gemini-1.5-flash; se falhar, podes mudar para gemini-1.5-pro
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt + '\n\n' + userPrompt }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 8192
+      }
+    });
+
+    const aiOutput = result.response.text();
+
+    if (!aiOutput) {
+      throw new Error('A IA não devolveu conteúdo.');
+    }
+
+    // 5. Parse do output da IA
+    const filesToUpdate = parseFiles(aiOutput);
+
+    if (filesToUpdate.length === 0) {
+      return res.status(400).json({
+        error: 'A IA não gerou ficheiros válidos. Resposta da IA:\n' + aiOutput.substring(0, 500)
+      });
+    }
+
+    // 6. Enviar para o GitHub
     const results = [];
-    for (const file of files) {
+    for (const file of filesToUpdate) {
       const result = await uploadFileToGitHub(
-        finalOwner,
-        finalRepo,
-        finalBranch,
-        finalToken,
-        file.path,
-        file.content
+        finalOwner, finalRepo, finalBranch, finalToken,
+        file.path, file.content
       );
       results.push({ path: file.path, success: result.success, message: result.message });
     }
 
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
-    res.status(200).json({
-      message: `${successCount} ficheiro(s) atualizado(s) com sucesso.${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
-      details: results
+
+    // 7. (Opcional) Trigger deploy na Vercel
+    if (process.env.VERCEL_DEPLOY_HOOK) {
+      try {
+        await fetch(process.env.VERCEL_DEPLOY_HOOK, { method: 'POST' });
+      } catch (e) {
+        console.warn('Deploy hook falhou:', e.message);
+      }
+    }
+
+    res.json({
+      message: `${successCount} ficheiro(s) atualizado(s) com IA.${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
+      details: results,
+      aiOutput: aiOutput.substring(0, 1000)
     });
+
   } catch (error) {
-    console.error('Erro no servidor:', error);
+    console.error('Erro no IA update:', error);
     res.status(500).json({ error: 'Erro interno: ' + error.message });
   }
 }
+
+// ===== FUNÇÕES AUXILIARES (iguais às anteriores) =====
 
 function parseFiles(text) {
   const files = [];
@@ -83,7 +163,6 @@ async function uploadFileToGitHub(owner, repo, branch, token, path, content) {
     Accept: 'application/vnd.github.v3+json'
   };
 
-  // Obter SHA (se existir)
   let sha = null;
   try {
     const getRes = await fetch(url, { headers });
@@ -100,7 +179,7 @@ async function uploadFileToGitHub(owner, repo, branch, token, path, content) {
 
   const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
   const payload = {
-    message: `Atualização automática via repo-updater: ${path}`,
+    message: `Atualização IA via Gemini: ${path}`,
     content: encodedContent,
     branch: branch
   };

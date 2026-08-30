@@ -1,4 +1,3 @@
-// api/ia-update.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fetch from 'node-fetch';
 
@@ -30,7 +29,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Buscar árvore do repositório
     const treeRes = await fetch(
       `https://api.github.com/repos/${finalOwner}/${finalRepo}/git/trees/${finalBranch}?recursive=1`,
       { headers: { Authorization: `token ${finalToken}` } }
@@ -40,7 +38,6 @@ export default async function handler(req, res) {
     }
     const treeData = await treeRes.json();
 
-    // 2. Obter conteúdo dos ficheiros (limitado a 30)
     const files = treeData.tree
       .filter(f => f.type === 'blob' && /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql)$/i.test(f.path))
       .slice(0, 30);
@@ -55,7 +52,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. Montar prompt
     const systemPrompt = `
 Tu és um assistente de código que modifica ficheiros de um repositório GitHub.
 Recebes uma lista de ficheiros com o formato:
@@ -72,19 +68,15 @@ O utilizador vai dar uma instrução. Deves:
 
     const userPrompt = `Instrução: ${prompt}\n\nContexto do repositório:\n${context}`;
 
-    // 4. Usar a biblioteca oficial (autenticação robusta)
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
-    // Tenta o modelo mais estável (fallback automático)
     let model;
-    let modelName = 'gemini-1.5-flash';
+    let modelName = 'gemini-2.5-flash';
     try {
       model = genAI.getGenerativeModel({ model: modelName });
-      // Teste rápido para ver se o modelo está acessível
-      await model.generateContent('teste');
     } catch (err) {
-      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-1.5-pro...`);
-      modelName = 'gemini-1.5-pro';
+      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-2.5-pro...`);
+      modelName = 'gemini-2.5-pro';
       model = genAI.getGenerativeModel({ model: modelName });
     }
 
@@ -107,7 +99,6 @@ O utilizador vai dar uma instrução. Deves:
       throw new Error('A IA não devolveu conteúdo.');
     }
 
-    // 5. Parse do output da IA
     const filesToUpdate = parseFiles(aiOutput);
 
     if (filesToUpdate.length === 0) {
@@ -116,20 +107,18 @@ O utilizador vai dar uma instrução. Deves:
       });
     }
 
-    // 6. Enviar para o GitHub
     const results = [];
     for (const file of filesToUpdate) {
-      const result = await uploadFileToGitHub(
+      const uploadRes = await uploadFileToGitHub(
         finalOwner, finalRepo, finalBranch, finalToken,
         file.path, file.content
       );
-      results.push({ path: file.path, success: result.success, message: result.message });
+      results.push({ path: file.path, success: uploadRes.success, message: uploadRes.message });
     }
 
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
 
-    // 7. (Opcional) Trigger deploy na Vercel
     if (process.env.VERCEL_DEPLOY_HOOK) {
       try {
         await fetch(process.env.VERCEL_DEPLOY_HOOK, { method: 'POST' });
@@ -149,8 +138,6 @@ O utilizador vai dar uma instrução. Deves:
     res.status(500).json({ error: 'Erro interno: ' + error.message });
   }
 }
-
-// ===== FUNÇÕES AUXILIARES =====
 
 function parseFiles(text) {
   const files = [];

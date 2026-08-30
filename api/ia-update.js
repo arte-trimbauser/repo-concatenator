@@ -1,4 +1,5 @@
 // api/ia-update.js
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import fetch from 'node-fetch';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
     }
     const treeData = await treeRes.json();
 
-    // 2. Obter conteúdo dos ficheiros
+    // 2. Obter conteúdo dos ficheiros (limitado a 30)
     const files = treeData.tree
       .filter(f => f.type === 'blob' && /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql)$/i.test(f.path))
       .slice(0, 30);
@@ -71,35 +72,36 @@ O utilizador vai dar uma instrução. Deves:
 
     const userPrompt = `Instrução: ${prompt}\n\nContexto do repositório:\n${context}`;
 
-    // 4. Chamar Gemini com gemini-pro (estável e gratuito)
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: systemPrompt + '\n\n' + userPrompt }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 8192
-          }
-        })
-      }
-    );
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini API error: ${geminiRes.status} - ${errText}`);
+    // 4. Usar a biblioteca oficial (autenticação robusta)
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    
+    // Tenta o modelo mais estável (fallback automático)
+    let model;
+    let modelName = 'gemini-1.5-flash';
+    try {
+      model = genAI.getGenerativeModel({ model: modelName });
+      // Teste rápido para ver se o modelo está acessível
+      await model.generateContent('teste');
+    } catch (err) {
+      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-1.5-pro...`);
+      modelName = 'gemini-1.5-pro';
+      model = genAI.getGenerativeModel({ model: modelName });
     }
 
-    const geminiData = await geminiRes.json();
-    const aiOutput = geminiData.candidates[0]?.content?.parts[0]?.text || '';
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt + '\n\n' + userPrompt }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 8192
+      }
+    });
+
+    const aiOutput = result.response.text();
 
     if (!aiOutput) {
       throw new Error('A IA não devolveu conteúdo.');
@@ -137,7 +139,7 @@ O utilizador vai dar uma instrução. Deves:
     }
 
     res.json({
-      message: `${successCount} ficheiro(s) atualizado(s) com IA.${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
+      message: `${successCount} ficheiro(s) atualizado(s) com IA (modelo ${modelName}).${failCount > 0 ? ` ${failCount} falha(s).` : ''}`,
       details: results,
       aiOutput: aiOutput.substring(0, 1000)
     });

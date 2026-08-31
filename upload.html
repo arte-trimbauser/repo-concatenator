@@ -196,4 +196,345 @@
       margin: 10px 0;
     }
     .safety-issues.error { border-left-color: var(--error-color); }
-    .safety-issues ul { margin: 5px 0; padding-left: 20
+    .safety-issues ul { margin: 5px 0; padding-left: 20px; }
+
+    .summary-box {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      background: var(--details-bg);
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .summary-box .stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .summary-box .badge {
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .badge-success { background: #2ea44f; color: #fff; }
+    .badge-danger { background: #d73a4a; color: #fff; }
+    .badge-warning { background: #ffd700; color: #000; }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    #status, #aiStatus { margin: 10px 0; font-weight: bold; }
+    .error { color: var(--error-color); }
+    .success { color: var(--status-color); }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--border);
+      border-top-color: var(--btn-bg);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <button class="theme-toggle" id="themeToggle" title="Alternar tema">🌙</button>
+
+  <div class="nav">
+    <a href="/index.html">📥 Download</a>
+    <a href="/upload.html" class="active">🤖 AI Proposta</a>
+  </div>
+
+  <h1>🤖 Gerar Proposta com IA</h1>
+
+  <div class="form-group">
+    <div class="field">
+      <label for="repoOwner">👤 Dono</label>
+      <input type="text" id="repoOwner" placeholder="ex: joaosilva">
+    </div>
+    <div class="field">
+      <label for="repoName">📁 Repositório</label>
+      <input type="text" id="repoName" placeholder="ex: meu-projeto">
+    </div>
+    <div class="field">
+      <label for="repoBranch">🌿 Branch</label>
+      <input type="text" id="repoBranch" placeholder="main" value="main">
+    </div>
+    <div class="field" style="flex: 2;">
+      <label for="repoToken">🔑 Token (opcional)</label>
+      <input type="password" id="repoToken" placeholder="Deixe em branco para usar o token global">
+    </div>
+  </div>
+
+  <div class="ai-container">
+    <div class="ai-row">
+      <input type="text" id="aiRepoUrl" placeholder="https://github.com/usuario/repo/tree/main">
+      <button onclick="gerarProposta()" id="proposalBtn">🧠 Gerar Proposta</button>
+    </div>
+    <textarea id="aiPrompt" rows="3" placeholder="Ex: Melhora o sistema de tickets, adiciona validação de entrada e logs de erro."></textarea>
+    <div id="aiStatus"></div>
+  </div>
+
+  <!-- ÁREA DA PROPOSTA (aparece após gerar) -->
+  <div id="proposalArea" class="proposal-area">
+    <h3>📋 Proposta Gerada</h3>
+    <div id="proposalSummary"></div>
+    <div id="safetyIssues"></div>
+    
+    <h4>📝 Diff das alterações:</h4>
+    <div id="diffContainer" class="diff-container"></div>
+
+    <div class="action-buttons">
+      <button onclick="aplicarProposta()" id="applyBtn" class="btn-success">✅ Aplicar no GitHub</button>
+      <button onclick="rejeitarProposta()" class="btn-danger">❌ Rejeitar</button>
+      <button onclick="copiarDiff()" class="btn-secondary">📋 Copiar Diff</button>
+    </div>
+    <div id="applyStatus"></div>
+  </div>
+
+  <!-- Modal para respostas da IA (debug) -->
+  <details style="margin-top:20px;">
+    <summary>💬 Resposta bruta da IA</summary>
+    <textarea id="rawAIResponse" rows="6" readonly style="margin-top:10px;"></textarea>
+  </details>
+
+  <script>
+    // ===== TEMA =====
+    (function() {
+      const toggle = document.getElementById('themeToggle');
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      document.body.classList.toggle('dark', currentTheme === 'dark');
+      toggle.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+      toggle.addEventListener('click', function() {
+        const isDark = document.body.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        toggle.textContent = isDark ? '☀️' : '🌙';
+      });
+    })();
+
+    // ===== VARIÁVEIS GLOBAIS =====
+    let currentProposal = null;
+
+    // ===== GERAR PROPOSTA =====
+    async function gerarProposta() {
+      const repoUrl = document.getElementById('aiRepoUrl').value.trim();
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      const owner = document.getElementById('repoOwner').value.trim();
+      const repo = document.getElementById('repoName').value.trim();
+      const branch = document.getElementById('repoBranch').value.trim() || 'main';
+      const token = document.getElementById('repoToken').value.trim();
+
+      const status = document.getElementById('aiStatus');
+      const btn = document.getElementById('proposalBtn');
+      const proposalArea = document.getElementById('proposalArea');
+      const rawOutput = document.getElementById('rawAIResponse');
+
+      if (!repoUrl || !prompt) {
+        status.innerHTML = '<span class="error">⚠️ Preenche o URL e a instrução.</span>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> A IA está a analisar...';
+      status.innerHTML = '⏳ A gerar proposta...';
+      proposalArea.classList.remove('visible');
+      rawOutput.value = '';
+
+      try {
+        const response = await fetch('/api/proposal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repoUrl, prompt, owner, repo, branch, token })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+
+        // Guardar proposta
+        currentProposal = data;
+        rawOutput.value = data.aiOutput || '';
+
+        // Mostrar área
+        proposalArea.classList.add('visible');
+
+        // Resumo
+        const summary = document.getElementById('proposalSummary');
+        summary.innerHTML = `
+          <div class="summary-box">
+            <div class="stat">📌 <strong>${data.objective || 'Melhoria'}</strong></div>
+            <div class="stat">📄 <strong>${data.summary.totalFiles}</strong> ficheiros</div>
+            <div class="stat">➕ <strong>${data.summary.newFiles}</strong> novos</div>
+            <div class="stat">✏️ <strong>${data.summary.modifiedFiles}</strong> modificados</div>
+            <div class="stat">
+              <span class="badge ${data.summary.hasErrors ? 'badge-danger' : 'badge-success'}">
+                ${data.summary.hasErrors ? '⚠️ Erros' : '✅ Safety OK'}
+              </span>
+            </div>
+          </div>
+        `;
+
+        // Safety Issues
+        const safetyDiv = document.getElementById('safetyIssues');
+        if (data.safety.errors.length > 0 || data.safety.warnings.length > 0) {
+          let html = '<div class="safety-issues error"><strong>🛡️ Problemas de segurança:</strong><ul>';
+          for (const err of data.safety.errors) {
+            html += `<li>🔴 <strong>${err.file}</strong> (linha ${err.line}): ${err.message}</li>`;
+          }
+          for (const warn of data.safety.warnings) {
+            html += `<li>🟡 <strong>${warn.file}</strong>: ${warn.message}</li>`;
+          }
+          html += '</ul></div>';
+          safetyDiv.innerHTML = html;
+        } else {
+          safetyDiv.innerHTML = '<div class="safety-issues" style="border-left-color:#2ea44f;">✅ Nenhum problema de segurança detetado.</div>';
+        }
+
+        // Renderizar Diff
+        renderDiffs(data.files);
+
+        status.innerHTML = `<span class="success">✅ Proposta gerada com sucesso! (${data.files.length} ficheiros)</span>`;
+        document.getElementById('applyStatus').innerHTML = '';
+
+      } catch (err) {
+        status.innerHTML = `<span class="error">❌ Erro: ${err.message}</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🧠 Gerar Proposta';
+      }
+    }
+
+    // ===== RENDERIZAR DIFFS =====
+    function renderDiffs(files) {
+      const container = document.getElementById('diffContainer');
+      if (!files || files.length === 0) {
+        container.innerHTML = '<p>Nenhum ficheiro alterado.</p>';
+        return;
+      }
+
+      let html = '';
+      for (const file of files) {
+        const isNew = file.isNew ? ' (novo)' : ' (modificado)';
+        html += `<h5 style="margin:10px 0 5px 0;">📄 ${file.path} ${isNew}</h5>`;
+        html += `<div class="diff-wrapper" data-diff="${encodeURIComponent(file.diff)}"></div>`;
+      }
+      container.innerHTML = html;
+
+      // Usar Diff2Html para renderizar cada diff
+      const wrappers = container.querySelectorAll('.diff-wrapper');
+      for (const wrapper of wrappers) {
+        const diffText = decodeURIComponent(wrapper.dataset.diff);
+        try {
+          const diffHtml = Diff2Html.html(diffText, {
+            drawFileList: false,
+            matching: 'lines',
+            outputFormat: 'side-by-side'
+          });
+          wrapper.innerHTML = diffHtml;
+        } catch (e) {
+          wrapper.innerHTML = `<pre style="white-space:pre-wrap;font-size:0.8rem;">${diffText}</pre>`;
+        }
+      }
+    }
+
+    // ===== APLICAR PROPOSTA =====
+    async function aplicarProposta() {
+      if (!currentProposal) {
+        alert('Nenhuma proposta para aplicar.');
+        return;
+      }
+
+      const owner = document.getElementById('repoOwner').value.trim();
+      const repo = document.getElementById('repoName').value.trim();
+      const branch = document.getElementById('repoBranch').value.trim() || 'main';
+      const token = document.getElementById('repoToken').value.trim();
+
+      if (!owner || !repo) {
+        alert('Preenche Dono e Repositório.');
+        return;
+      }
+
+      const btn = document.getElementById('applyBtn');
+      const status = document.getElementById('applyStatus');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> A aplicar...';
+      status.innerHTML = '⏳ A enviar para o GitHub...';
+
+      try {
+        // Preparar ficheiros para aplicar
+        const filesToApply = currentProposal.files.map(f => ({
+          path: f.path,
+          newContent: f.newContent
+        }));
+
+        const response = await fetch('/api/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            files: filesToApply,
+            owner,
+            repo,
+            branch,
+            token,
+            commitMessage: `🤖 ${currentProposal.objective || 'Melhoria via IA'}`
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error || 'Erro ao aplicar');
+
+        status.innerHTML = `<span class="success">✅ ${data.message}</span>`;
+        if (data.deployed) {
+          status.innerHTML += ' 🚀 Deploy disparado!';
+        }
+
+        // Desativar botão aplicar para não duplicar
+        btn.disabled = true;
+        btn.textContent = '✅ Aplicado';
+
+      } catch (err) {
+        status.innerHTML = `<span class="error">❌ Erro: ${err.message}</span>`;
+        btn.disabled = false;
+        btn.innerHTML = '✅ Aplicar no GitHub';
+      }
+    }
+
+    // ===== REJEITAR PROPOSTA =====
+    function rejeitarProposta() {
+      if (!confirm('Tens a certeza que queres rejeitar esta proposta?')) return;
+      currentProposal = null;
+      document.getElementById('proposalArea').classList.remove('visible');
+      document.getElementById('aiStatus').innerHTML = '📋 Proposta rejeitada.';
+      document.getElementById('applyStatus').innerHTML = '';
+    }
+
+    // ===== COPIAR DIFF =====
+    function copiarDiff() {
+      const container = document.getElementById('diffContainer');
+      const text = container.innerText || container.textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Diff copiado para a área de transferência!');
+      }).catch(() => {
+        alert('Não foi possível copiar.');
+      });
+    }
+  </script>
+
+</body>
+</html>

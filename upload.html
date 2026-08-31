@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Upload para GitHub</title>
+  <title>Repo AI - Proposta e Aplicação</title>
+  <!-- CDN para renderizar diffs -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.48/bundles/css/diff2html.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.48/bundles/js/diff2html-ui.min.js"></script>
   <style>
     :root {
       --bg: #fafafa;
@@ -12,6 +15,10 @@
       --input-bg: #fff;
       --btn-bg: #2ea44f;
       --btn-hover: #22863a;
+      --btn-danger: #d73a4a;
+      --btn-danger-hover: #b31d28;
+      --btn-secondary: #586069;
+      --btn-secondary-hover: #444d56;
       --nav-link: #0366d6;
       --nav-active: #000;
       --status-color: #22863a;
@@ -21,6 +28,8 @@
       --details-bg: #f6f8fa;
       --ai-bg: #e8f0fe;
       --ai-border: #1a73e8;
+      --warning-bg: #fff5b1;
+      --warning-border: #ffd700;
     }
     body.dark {
       --bg: #1e1e1e;
@@ -29,6 +38,10 @@
       --input-bg: #2d2d2d;
       --btn-bg: #2ea44f;
       --btn-hover: #22863a;
+      --btn-danger: #f85149;
+      --btn-danger-hover: #da3633;
+      --btn-secondary: #8b949e;
+      --btn-secondary-hover: #b1bac4;
       --nav-link: #58a6ff;
       --nav-active: #fff;
       --status-color: #4caf50;
@@ -38,11 +51,13 @@
       --details-bg: #2d2d2d;
       --ai-bg: #1e2a3a;
       --ai-border: #58a6ff;
+      --warning-bg: #3d3a1a;
+      --warning-border: #ffd700;
     }
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 30px auto;
       padding: 0 20px;
       background-color: var(--bg);
@@ -87,66 +102,39 @@
       background: var(--nav-link);
       color: #fff;
     }
-    textarea {
+    textarea, input[type="text"], input[type="password"] {
       width: 100%;
-      height: 300px;
-      font-family: monospace;
       padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
       background-color: var(--input-bg);
       color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
       box-sizing: border-box;
+      font-size: 1rem;
       transition: background 0.3s, color 0.3s;
     }
+    textarea {
+      height: 200px;
+      font-family: monospace;
+      resize: vertical;
+    }
     button {
-      padding: 12px 24px;
-      background: var(--btn-bg);
-      color: white;
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: var(--btn-bg);
+      color: #fff;
       border: none;
       border-radius: 6px;
-      cursor: pointer;
       font-size: 1rem;
       transition: background 0.3s;
     }
-    button:hover {
-      background: var(--btn-hover);
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    #status, #aiStatus {
-      margin: 15px 0;
-      font-weight: bold;
-      color: var(--status-color);
-    }
-    .error {
-      color: var(--error-color);
-    }
-    .success {
-      color: var(--status-color);
-    }
-    .details {
-      background: var(--details-bg);
-      padding: 15px;
-      border-radius: 6px;
-      margin-top: 10px;
-      font-family: monospace;
-      font-size: 0.9rem;
-      white-space: pre-wrap;
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-    .info-box {
-      background: var(--info-bg);
-      border-left: 4px solid var(--info-border);
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      color: var(--text);
-    }
+    button:hover { background-color: var(--btn-hover); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-danger { background-color: var(--btn-danger); }
+    .btn-danger:hover { background-color: var(--btn-danger-hover); }
+    .btn-secondary { background-color: var(--btn-secondary); }
+    .btn-secondary:hover { background-color: var(--btn-secondary-hover); }
+
     .form-group {
       display: flex;
       gap: 15px;
@@ -162,260 +150,50 @@
       font-weight: 600;
       margin-bottom: 4px;
     }
-    .form-group input {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background-color: var(--input-bg);
-      color: var(--text);
-      box-sizing: border-box;
-      transition: background 0.3s, color 0.3s;
-    }
-    .ai-box {
-      background: var(--ai-bg);
-      border-left: 4px solid var(--ai-border);
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      color: var(--text);
-    }
+
     .ai-container {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      margin-bottom: 25px;
-      padding: 15px;
-      background: var(--input-bg);
+      background: var(--ai-bg);
+      border: 1px solid var(--ai-border);
       border-radius: 8px;
-      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 25px;
     }
     .ai-row {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+      margin-bottom: 10px;
     }
-    .ai-row input {
-      flex: 2;
-      min-width: 200px;
+    .ai-row input { flex: 2; min-width: 200px; }
+    .ai-row button { flex: 0; background: #1a73e8; }
+    .ai-row button:hover { background: #1557b0; }
+
+    .proposal-area {
+      margin-top: 20px;
+      border: 2px solid var(--ai-border);
+      border-radius: 8px;
+      padding: 20px;
+      background: var(--input-bg);
+      display: none;
+    }
+    .proposal-area.visible { display: block; }
+
+    .diff-container {
+      background: var(--details-bg);
+      border-radius: 6px;
       padding: 10px;
-      border: 1px solid var(--border);
+      margin: 10px 0;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .diff-container .d2h-wrapper { font-size: 0.85rem; }
+
+    .safety-issues {
+      background: var(--warning-bg);
+      border-left: 4px solid var(--warning-border);
+      padding: 12px;
       border-radius: 4px;
-      background: var(--bg);
-      color: var(--text);
+      margin: 10px 0;
     }
-    .ai-row button {
-      flex: 0;
-      background: #1a73e8;
-    }
-    .ai-row button:hover {
-      background: #1557b0;
-    }
-    .ai-prompt {
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: inherit;
-      resize: vertical;
-      min-height: 80px;
-    }
-    .ai-response-box {
-      margin-top: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .ai-response-box textarea {
-      height: 150px;
-      background-color: var(--details-bg);
-    }
-  </style>
-</head>
-<body>
-
-  <button class="theme-toggle" id="themeToggle" title="Alternar tema">🌙</button>
-
-  <div class="nav">
-    <a href="/index.html">📥 Download (Concatenar)</a>
-    <a href="/upload.html" class="active">📤 Upload (Atualizar Repo)</a>
-  </div>
-
-  <h1>📤 Atualizar Repositório GitHub</h1>
-  <div class="info-box">
-    Cole abaixo o texto gerado pela ferramenta de download (com os cabeçalhos <code>// ===== ARQUIVO: ...</code>).<br>
-    Todos os ficheiros serão criados ou atualizados no repositório indicado.
-  </div>
-
-  <div class="form-group">
-    <div class="field">
-      <label for="repoOwner">👤 Dono (owner)</label>
-      <input type="text" id="repoOwner" placeholder="ex: joaosilva">
-    </div>
-    <div class="field">
-      <label for="repoName">📁 Repositório</label>
-      <input type="text" id="repoName" placeholder="ex: meu-projeto">
-    </div>
-    <div class="field">
-      <label for="repoBranch">🌿 Branch</label>
-      <input type="text" id="repoBranch" placeholder="main" value="main">
-    </div>
-    <div class="field" style="flex: 2;">
-      <label for="repoToken">🔑 Token (opcional)</label>
-      <input type="password" id="repoToken" placeholder="Deixe em branco para usar o token global">
-    </div>
-  </div>
-
-  <div class="ai-box">
-    <strong>🤖 Modo IA (grátis com Gemini)</strong> – Dá uma instrução em português e a IA modifica o código automaticamente.
-  </div>
-  <div class="ai-container">
-    <div class="ai-row">
-      <input type="text" id="aiRepoUrl" placeholder="https://github.com/usuario/repo/tree/main">
-      <button onclick="executarIA()" id="aiBtn">🤖 Executar IA</button>
-    </div>
-    <textarea id="aiPrompt" class="ai-prompt" rows="3" placeholder="Ex: Adiciona um ficheiro .env.example com as variáveis GEMINI_API_KEY e GITHUB_TOKEN, e atualiza o README.md para explicar como configurar."></textarea>
-    <div id="aiStatus"></div>
-    
-    <div class="ai-response-box">
-      <label for="aiResponseOutput">💬 Resposta bruta da IA:</label>
-      <textarea id="aiResponseOutput" placeholder="A resposta gerada pelo Gemini aparecerá aqui para poderes rever..." readonly></textarea>
-    </div>
-  </div>
-
-  <label for="inputText"><strong>Ficheiros a enviar para o GitHub:</strong></label>
-  <textarea id="inputText" placeholder="Cole aqui o texto do repo-concatenator..."></textarea>
-  <br><br>
-  <button id="updateBtn" onclick="updateRepo()">📤 Enviar para o GitHub</button>
-  <div id="status"></div>
-  <div id="details" class="details" style="display:none;"></div>
-
-  <script>
-    (function() {
-      const toggle = document.getElementById('themeToggle');
-      const currentTheme = localStorage.getItem('theme') || 'light';
-      document.body.classList.toggle('dark', currentTheme === 'dark');
-      toggle.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
-
-      toggle.addEventListener('click', function() {
-        const isDark = document.body.classList.toggle('dark');
-        const newTheme = isDark ? 'dark' : 'light';
-        localStorage.setItem('theme', newTheme);
-        toggle.textContent = isDark ? '☀️' : '🌙';
-      });
-    })();
-
-    async function updateRepo() {
-      const text = document.getElementById('inputText').value.trim();
-      const owner = document.getElementById('repoOwner').value.trim();
-      const repo = document.getElementById('repoName').value.trim();
-      const branch = document.getElementById('repoBranch').value.trim() || 'main';
-      const token = document.getElementById('repoToken').value.trim();
-
-      const status = document.getElementById('status');
-      const details = document.getElementById('details');
-      const btn = document.getElementById('updateBtn');
-
-      if (!text) {
-        status.innerHTML = '<span class="error">⚠️ Por favor, cole o texto.</span>';
-        return;
-      }
-      if (!owner || !repo) {
-        status.innerHTML = '<span class="error">⚠️ Preencha Dono e Repositório.</span>';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = '⏳ A enviar...';
-      status.innerHTML = '⏳ A processar...';
-      details.style.display = 'none';
-
-      try {
-        const payload = { text, owner, repo, branch };
-        if (token) payload.token = token;
-
-        const response = await fetch('/api/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Erro desconhecido');
-        }
-
-        status.innerHTML = `<span class="success">✅ ${data.message}</span>`;
-        if (data.details) {
-          details.style.display = 'block';
-          details.textContent = JSON.stringify(data.details, null, 2);
-        }
-      } catch (err) {
-        status.innerHTML = `<span class="error">❌ Erro: ${err.message}</span>`;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '📤 Enviar para o GitHub';
-      }
-    }
-
-    async function executarIA() {
-      const repoUrl = document.getElementById('aiRepoUrl').value.trim();
-      const prompt = document.getElementById('aiPrompt').value.trim();
-      const owner = document.getElementById('repoOwner').value.trim();
-      const repo = document.getElementById('repoName').value.trim();
-      const branch = document.getElementById('repoBranch').value.trim() || 'main';
-      const token = document.getElementById('repoToken').value.trim();
-
-      const status = document.getElementById('aiStatus');
-      const btn = document.getElementById('aiBtn');
-      const aiResponseOutput = document.getElementById('aiResponseOutput');
-
-      if (!repoUrl) {
-        status.innerHTML = '<span class="error">⚠️ Cola o link do repositório.</span>';
-        return;
-      }
-      if (!prompt) {
-        status.innerHTML = '<span class="error">⚠️ Escreve a instrução para a IA.</span>';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = '⏳ A IA está a pensar...';
-      status.innerHTML = '⏳ A analisar o repositório e a gerar código...';
-      aiResponseOutput.value = '';
-
-      try {
-        const response = await fetch('/api/ia-update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ repoUrl, prompt, owner, repo, branch, token })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Erro desconhecido');
-        }
-
-        status.innerHTML = `<span class="success">✅ ${data.message}</span>`;
-        if (data.aiOutput) {
-          aiResponseOutput.value = data.aiOutput;
-          const textarea = document.getElementById('inputText');
-          textarea.value = data.aiOutput;
-          const detailsDiv = document.getElementById('details');
-          detailsDiv.style.display = 'block';
-          detailsDiv.textContent = JSON.stringify(data.details, null, 2);
-        }
-      } catch (err) {
-        status.innerHTML = `<span class="error">❌ Erro: ${err.message}</span>`;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🤖 Executar IA';
-      }
-    }
-  </script>
-
-</body>
-</html>
+    .safety-issues.error { border-left-color: var(--error-color); }
+    .safety-issues ul { margin: 5px 0; padding-left: 20

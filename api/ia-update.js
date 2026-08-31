@@ -91,14 +91,13 @@ REGRAS OBRIGATÓRIAS:
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
     let model;
-    let modelName = 'gemini-3.6-flash';
-    try {
-      model = genAI.getGenerativeModel({ model: modelName });
-    } catch (err) {
-      console.warn(`Modelo ${modelName} indisponível, a tentar gemini-3.7-flash...`);
-      modelName = 'gemini-3.7-flash';
-      model = genAI.getGenerativeModel({ model: modelName });
-    }
+    let modelName = 'gemini-1.5-flash';
+  try {
+  model = genAI.getGenerativeModel({ model: modelName });
+} catch (err) {
+  modelName = 'gemini-1.5-pro';
+  model = genAI.getGenerativeModel({ model: modelName });
+}
 
     const result = await model.generateContent({
       contents: [

@@ -1,6 +1,5 @@
 // api/apply.js
 import { uploadFileToGitHub } from '../utils/github.js';
-import { parseFiles } from '../utils/parser.js';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Dono e repositório são obrigatórios' });
   }
 
-  const finalToken = GITHUB_TOKEN; // sempre do servidor
+  const finalToken = GITHUB_TOKEN;
   if (!finalToken) {
     return res.status(500).json({ error: 'Token do GitHub não configurado no servidor' });
   }

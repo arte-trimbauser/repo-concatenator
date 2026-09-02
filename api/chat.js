@@ -86,8 +86,8 @@ export default async function handler(req, res) {
 
     // 8. Chamar Gemini
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    
     const result = await model.generateContent({
       contents: [
         {

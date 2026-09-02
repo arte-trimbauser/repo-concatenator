@@ -1,4 +1,3 @@
-// utils/config.js
 export const IGNORED_PATHS = [
   'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb',
   'node_modules/', '.git/', 'dist/', 'build/', '.next/', '.cache/',
@@ -6,12 +5,12 @@ export const IGNORED_PATHS = [
 ];
 
 export const DEFAULT_BRANCH = 'main';
-export const MAX_FILES = 60;          // limite de ficheiros analisados
-export const MAX_CONTEXT_CHARS = 30000; // limite de caracteres por ficheiro (para contexto)
-export const ALLOWED_EXTENSIONS = /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql|env\.example)$/i;
+export const MAX_FILES = 200;           // aumentado
+export const MAX_CONTEXT_CHARS = 30000;
+export const ALLOWED_EXTENSIONS = /\.(js|html|css|json|md|py|sh|ts|jsx|tsx|txt|yml|yaml|xml|sql|env\.example|vue|svelte|go|rs|rb|php|java|kt|scala|lua|r|jl|c|cpp|h|hpp|cs|fs|clj|ex|exs|erl|hrl|cr|nim|zig|v|dart|pl|pm|t|ps1|psm1|tf|tfvars|hcl|dockerfile|ini|conf|cfg)$/i;
 
 export const AI_DEFAULTS = {
-  model: 'gemini-1.5-flash',
+  model: 'gemini-flash-latest',   // atualizado
   temperature: 0.2,
   maxOutputTokens: 8192
 };

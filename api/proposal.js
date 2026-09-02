@@ -1,4 +1,9 @@
 // api/proposal.js
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { createTwoFilesPatch } = require('diff');
+const { v4: uuidv4 } = require('uuid');
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getRepoTree, getFileContent } from '../utils/github.js';
 import { parseFiles } from '../utils/parser.js';
@@ -74,10 +79,6 @@ REGRAS OBRIGATÓRIAS:
     if (parsedFiles.length === 0) {
       return res.status(400).json({ error: 'A IA não incluiu cabeçalhos corretos.', aiOutput });
     }
-
-    // Import dinâmico para pacotes CommonJS
-    const { createTwoFilesPatch } = await import('diff');
-    const { v4: uuidv4 } = await import('uuid');
 
     const filesWithDiff = parsedFiles.map(newFile => {
       const oldFile = fileContents.find(f => f.path === newFile.path);

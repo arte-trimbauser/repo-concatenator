@@ -1,17 +1,10 @@
 {
   "name": "repo-concatenator",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "type": "module",
   "dependencies": {
-    "@google/generative-ai": "^0.25.0",
+    "@google/generative-ai": "^0.21.0",
     "diff": "^5.2.0",
     "uuid": "^10.0.0"
-  },
-  "devDependencies": {
-    "eslint": "^9.0.0"
-  },
-  "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel deploy --prod"
   }
 }

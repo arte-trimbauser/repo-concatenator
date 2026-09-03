@@ -700,14 +700,18 @@
         return Array.from(checkboxes).map(cb => cb.dataset.path);
       }
 
-      // Buscar conteúdo via backend
+      // ===== FUNÇÃO CORRIGIDA: getFileContentViaBackend =====
       async function getFileContentViaBackend(owner, repo, branch, path, token, signal) {
-        const response = await fetch('/api/get-content', {
+        // Se signal for fornecido, usa-o; caso contrário, faz fetch sem signal
+        const fetchOptions = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ owner, repo, branch, path, token }),
-          signal
-        });
+          body: JSON.stringify({ owner, repo, branch, path, token })
+        };
+        if (signal) {
+          fetchOptions.signal = signal;
+        }
+        const response = await fetch('/api/get-content', fetchOptions);
         if (!response.ok) {
           const err = await response.json();
           throw new Error(err.error || `HTTP ${response.status}`);
@@ -716,6 +720,7 @@
         return data.content;
       }
 
+      // ===== fetchFullContent (corrigido) =====
       window.fetchFullContent = async function() {
         const urlInput = document.getElementById('repoUrl').value.trim();
         if (!urlInput) { setStatus('⚠️ Insira uma URL.', 'error'); return; }
@@ -744,7 +749,10 @@
         const output = document.getElementById('output');
         output.value = '';
 
-        if (currentController) currentController.abort();
+        // Criar novo AbortController
+        if (currentController) {
+          currentController.abort();
+        }
         currentController = new AbortController();
         isCancelled = false;
         showCancelButton();
@@ -756,7 +764,9 @@
         for (const path of selected) {
           if (isCancelled) break;
           try {
-            const content = await getFileContentViaBackend(parsed.owner, parsed.repo, branch, path, token, currentController.signal);
+            const content = await getFileContentViaBackend(
+              parsed.owner, parsed.repo, branch, path, token, currentController.signal
+            );
             fullContent += `===== ${path} =====\n${content}\n\n`;
             addProgressItem(path, 'success');
           } catch (err) {
@@ -783,6 +793,7 @@
         currentController = null;
       };
 
+      // ===== downloadProject (corrigido) =====
       window.downloadProject = async function() {
         const urlInput = document.getElementById('repoUrl').value.trim();
         if (!urlInput) { setStatus('⚠️ Insira uma URL.', 'error'); return; }
@@ -809,7 +820,9 @@
         const btn = setLoading('downloadBtn', 'A preparar...');
         setStatus(`⏳ Preparando download de ${selected.length} arquivos...`, 'info');
 
-        if (currentController) currentController.abort();
+        if (currentController) {
+          currentController.abort();
+        }
         currentController = new AbortController();
         isCancelled = false;
         showCancelButton();
@@ -821,7 +834,9 @@
         for (const path of selected) {
           if (isCancelled) break;
           try {
-            const content = await getFileContentViaBackend(parsed.owner, parsed.repo, branch, path, token, currentController.signal);
+            const content = await getFileContentViaBackend(
+              parsed.owner, parsed.repo, branch, path, token, currentController.signal
+            );
             fullText += `===== ${path} =====\n${content}\n\n`;
             addProgressItem(path, 'success');
           } catch (err) {

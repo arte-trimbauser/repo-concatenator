@@ -1,4 +1,3 @@
-// api/apply.js
 import { uploadFileToGitHub } from '../utils/github.js';
 
 export default async function handler(req, res) {
@@ -33,8 +32,18 @@ export default async function handler(req, res) {
     }
 
     const successCount = results.filter(r => r.success).length;
+    const failCount = results.length - successCount;
+
+    if (process.env.VERCEL_DEPLOY_HOOK && successCount > 0) {
+      try {
+        await fetch(process.env.VERCEL_DEPLOY_HOOK, { method: 'POST' });
+      } catch (e) {
+        console.warn('Deploy hook falhou:', e.message);
+      }
+    }
+
     res.json({
-      message: `${successCount} ficheiro(s) aplicado(s).`,
+      message: `${successCount} ficheiro(s) aplicado(s).${failCount ? ` ${failCount} falha(s).` : ''}`,
       details: results
     });
   } catch (error) {

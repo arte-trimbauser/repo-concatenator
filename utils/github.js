@@ -1,9 +1,5 @@
-// utils/github.js
 import { IGNORED_PATHS, ALLOWED_EXTENSIONS, MAX_FILES } from './config.js';
 
-/**
- * Obtém a árvore de ficheiros de um repositório
- */
 export async function getRepoTree(owner, repo, branch, token, basePath = '') {
   const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
   const response = await fetch(url, {
@@ -25,9 +21,6 @@ export async function getRepoTree(owner, repo, branch, token, basePath = '') {
     .slice(0, MAX_FILES);
 }
 
-/**
- * Obtém o conteúdo de um ficheiro raw
- */
 export async function getFileContent(owner, repo, branch, filePath, token) {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
   const response = await fetch(url, {
@@ -37,9 +30,6 @@ export async function getFileContent(owner, repo, branch, filePath, token) {
   return await response.text();
 }
 
-/**
- * Faz upload de um ficheiro para o GitHub (cria ou atualiza)
- */
 export async function uploadFileToGitHub(owner, repo, branch, token, path, content, commitMessage) {
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
   const headers = {
@@ -47,7 +37,6 @@ export async function uploadFileToGitHub(owner, repo, branch, token, path, conte
     Accept: 'application/vnd.github.v3+json'
   };
 
-  // Obter SHA se o ficheiro existir
   let sha = null;
   try {
     const getRes = await fetch(url, { headers });

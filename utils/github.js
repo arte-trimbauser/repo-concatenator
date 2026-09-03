@@ -1,5 +1,9 @@
 import { IGNORED_PATHS, ALLOWED_EXTENSIONS, MAX_FILES } from './config.js';
 
+/**
+ * Obtém a árvore de ficheiros de um repositório (recursiva)
+ * Usa a API de trees do GitHub.
+ */
 export async function getRepoTree(owner, repo, branch, token, basePath = '') {
   const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
   const response = await fetch(url, {
@@ -21,15 +25,38 @@ export async function getRepoTree(owner, repo, branch, token, basePath = '') {
     .slice(0, MAX_FILES);
 }
 
+/**
+ * Obtém o conteúdo de um ficheiro usando a API de Contents do GitHub.
+ * Mais fiável que raw.githubusercontent.com porque reflete o estado real do branch.
+ */
 export async function getFileContent(owner, repo, branch, filePath, token) {
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
+  // Usa a API REST /contents com ?ref= para obter o conteúdo
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
   const response = await fetch(url, {
-    headers: { Authorization: `token ${token}` }
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github.v3+json'
+    }
   });
-  if (!response.ok) return null;
-  return await response.text();
+  if (!response.ok) {
+    // Se o ficheiro não existir, retorna null em vez de lançar erro
+    if (response.status === 404) return null;
+    // Outros erros (ex: 403, 500) podem ser lançados
+    throw new Error(`GitHub API error (${response.status}): ${await response.text()}`);
+  }
+  const data = await response.json();
+  if (data.encoding === 'base64') {
+    // Decodifica o conteúdo base64 para string UTF-8
+    return Buffer.from(data.content, 'base64').toString('utf-8');
+  }
+  // Caso não seja base64 (ex: se o ficheiro for muito pequeno, a API pode devolver texto puro)
+  return data.content || '';
 }
 
+/**
+ * Faz upload (cria ou atualiza) de um ficheiro no GitHub.
+ * Usa a API de contents com PUT.
+ */
 export async function uploadFileToGitHub(owner, repo, branch, token, path, content, commitMessage) {
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
   const headers = {
@@ -37,6 +64,7 @@ export async function uploadFileToGitHub(owner, repo, branch, token, path, conte
     Accept: 'application/vnd.github.v3+json'
   };
 
+  // Obter SHA se o ficheiro existir
   let sha = null;
   try {
     const getRes = await fetch(url, { headers });

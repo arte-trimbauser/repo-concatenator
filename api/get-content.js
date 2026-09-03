@@ -18,7 +18,12 @@ export default async function handler(req, res) {
   try {
     const content = await getFileContent(owner, repo, branch, path, finalToken);
     if (content === null) {
-      return res.status(404).json({ error: 'Ficheiro não encontrado' });
+      // Constrói o URL raw para ajudar na depuração
+      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+      return res.status(404).json({ 
+        error: `Ficheiro não encontrado. Tentou: ${rawUrl}`,
+        rawUrl
+      });
     }
     res.json({ content });
   } catch (err) {

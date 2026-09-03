@@ -1,6 +1,5 @@
-// utils/safety.js
 /**
- * Funções de safety checks (leves, sem ESLint)
+ * Safety checks melhorados
  */
 
 export function runSafetyChecks(files, existingPaths = []) {
@@ -8,34 +7,56 @@ export function runSafetyChecks(files, existingPaths = []) {
   const warnings = [];
 
   for (const file of files) {
+    const content = file.newContent || '';
+    const path = file.path || '';
+
     // 1. Deteção de segredos hardcoded
-    const secrets = detectHardcodedSecrets(file.newContent);
+    const secrets = detectHardcodedSecrets(content);
     for (const secret of secrets) {
       warnings.push({
-        file: file.path,
+        file: path,
         message: `Possível segredo hardcoded: ${secret}`,
         type: 'security'
       });
     }
 
-    // 2. Verificação de imports relativos inválidos (apenas aviso)
-    if (['.js', '.ts', '.jsx', '.tsx'].some(ext => file.path.endsWith(ext))) {
-      const invalidImports = detectInvalidImports(file.newContent, existingPaths);
+    // 2. Deteção de padrões perigosos (eval, child_process, fs, etc.)
+    const dangerous = detectDangerousPatterns(content);
+    for (const pattern of dangerous) {
+      errors.push({
+        file: path,
+        message: `Uso de padrão perigoso: ${pattern}`,
+        type: 'security'
+      });
+    }
+
+    // 3. Verificação de imports relativos inválidos (apenas aviso)
+    if (/\.(js|ts|jsx|tsx)$/.test(path)) {
+      const invalidImports = detectInvalidImports(content, existingPaths);
       for (const imp of invalidImports) {
         warnings.push({
-          file: file.path,
+          file: path,
           message: `Import '${imp}' pode não existir no projeto.`,
           type: 'import'
         });
       }
     }
 
-    // 3. Verificação de possíveis SQL injection ou eval (apenas aviso)
-    if (/eval\s*\(/.test(file.newContent)) {
+    // 4. Verificação de tamanho excessivo (evitar DoS)
+    if (content.length > 100000) {
       warnings.push({
-        file: file.path,
-        message: 'Uso de eval() detectado – possível risco de segurança.',
-        type: 'code_quality'
+        file: path,
+        message: `Ficheiro muito grande (${content.length} caracteres). Pode causar lentidão.`,
+        type: 'performance'
+      });
+    }
+
+    // 5. Deteção de path traversal (ex: "../../../etc/passwd")
+    if (/\.\.\/\.\.\//.test(content)) {
+      errors.push({
+        file: path,
+        message: 'Possível path traversal (../) detectado.',
+        type: 'security'
       });
     }
   }
@@ -48,13 +69,35 @@ function detectHardcodedSecrets(content) {
     /(api[_-]?key|apikey|secret|password|token|bearer|auth)\s*[:=]\s*["']([^"']{8,})["']/gi,
     /Bearer\s+["'][^"']+["']/gi,
     /sk-[a-zA-Z0-9]{20,}/g,
-    /ghp_[a-zA-Z0-9]{30,}/g
+    /ghp_[a-zA-Z0-9]{30,}/g,
+    /AIza[0-9A-Za-z-_]{35}/g // Google API key
   ];
   const found = [];
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
       found.push(match[0].substring(0, 40) + '...');
+    }
+  }
+  return found;
+}
+
+function detectDangerousPatterns(content) {
+  const patterns = [
+    /\beval\s*\(/,
+    /\bnew\s+Function\s*\(/,
+    /\bchild_process\b/,
+    /\brequire\s*\(\s*['"]child_process['"]\s*\)/,
+    /\bexec\s*\(/,
+    /\bspawn\s*\(/,
+    /\bprocess\.exit\s*\(/,
+    /\bfs\.(readFile|writeFile|unlink|rmdir|mkdir)/,
+    /\b__dirname\b.*\.\.\// // possível path traversal
+  ];
+  const found = [];
+  for (const pattern of patterns) {
+    if (pattern.test(content)) {
+      found.push(pattern.toString());
     }
   }
   return found;
@@ -67,7 +110,6 @@ function detectInvalidImports(content, existingPaths) {
   while ((match = regex.exec(content)) !== null) {
     const imp = match[1];
     if (imp.startsWith('.')) {
-      // Verifica se existe nos paths existentes
       const resolved = imp.replace(/\.(js|ts|jsx|tsx)$/, '');
       const exists = existingPaths.some(p =>
         p === imp ||

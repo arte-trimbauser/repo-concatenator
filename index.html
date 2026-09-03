@@ -42,7 +42,6 @@
       transition: background 0.3s, color 0.3s;
       line-height: 1.5;
     }
-    /* ===== NAVEGAÇÃO ===== */
     .nav {
       display: flex;
       flex-wrap: wrap;
@@ -62,7 +61,6 @@
       border-bottom: 3px solid var(--nav-link);
       padding-bottom: 8px;
     }
-    /* ===== TEMA ===== */
     .theme-toggle {
       position: fixed;
       top: 20px;
@@ -86,7 +84,6 @@
       background: var(--nav-link);
       color: #fff;
     }
-    /* ===== FORMULÁRIO ===== */
     .form-group {
       display: flex;
       flex-wrap: wrap;
@@ -143,7 +140,6 @@
       box-shadow: var(--focus-ring);
       border-color: var(--nav-link);
     }
-    /* ===== BOTÕES ===== */
     .btn-group {
       display: flex;
       flex-wrap: wrap;
@@ -183,7 +179,13 @@
     button.danger:hover:not(:disabled) {
       background-color: #b12a3a;
     }
-    /* ===== STATUS ===== */
+    #cancelBtn {
+      display: none;
+      background-color: #d73a4a;
+    }
+    #cancelBtn:hover:not(:disabled) {
+      background-color: #b12a3a;
+    }
     #status {
       margin: 10px 0;
       font-weight: 600;
@@ -204,7 +206,35 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ===== PROGRESS CHECKLIST E BARRA ===== */
+    #progressWrapper {
+      margin: 10px 0;
+      display: none;
+    }
+    #progressBar {
+      width: 100%;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    #progressBar::-webkit-progress-bar {
+      background: var(--border);
+      border-radius: 10px;
+    }
+    #progressBar::-webkit-progress-value {
+      background: var(--btn-bg);
+      border-radius: 10px;
+      transition: width 0.3s;
+    }
+    #progressBar::-moz-progress-bar {
+      background: var(--btn-bg);
+      border-radius: 10px;
+    }
+    #progressPercent {
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
     #progressContainer {
       margin: 15px 0;
       padding: 10px 15px;
@@ -238,39 +268,9 @@
     }
     #progressList li .error {
       color: var(--error-color);
-    }
-    /* Barra de progresso */
-    #progressBar {
-      width: 100%;
-      height: 20px;
-      border-radius: 10px;
-      background-color: var(--border);
-      overflow: hidden;
-      margin-top: 8px;
-      display: none;
-    }
-    #progressBar::-webkit-progress-bar {
-      background-color: var(--border);
-      border-radius: 10px;
-    }
-    #progressBar::-webkit-progress-value {
-      background-color: var(--btn-bg);
-      border-radius: 10px;
-      transition: width 0.3s;
-    }
-    #progressBar::-moz-progress-bar {
-      background-color: var(--btn-bg);
-      border-radius: 10px;
-    }
-    #cancelBtn {
-      margin-top: 8px;
-      background-color: var(--error-color);
-    }
-    #cancelBtn:hover:not(:disabled) {
-      background-color: #b12a3a;
+      font-weight: bold;
     }
 
-    /* ===== ÁRVORE DE ARQUIVOS ===== */
     #fileTree {
       background-color: var(--input-bg);
       border: 1px solid var(--border);
@@ -321,7 +321,6 @@
       background: #b0b0b0;
     }
 
-    /* ===== TEXTAREA ===== */
     textarea {
       width: 100%;
       height: 400px;
@@ -342,12 +341,10 @@
       border-color: var(--nav-link);
     }
 
-    /* ===== DATALIST ===== */
     input[list]::-webkit-calendar-picker-indicator {
       opacity: 0.6;
     }
 
-    /* ===== RESPONSIVO ===== */
     @media (max-width: 700px) {
       .form-group { flex-direction: column; align-items: stretch; }
       .form-group label { min-width: auto; }
@@ -372,14 +369,12 @@
 
   <h1>Cole o link do repositório GitHub</h1>
 
-  <!-- URL com datalist de histórico -->
   <div class="form-group">
     <label for="repoUrl">URL:</label>
     <input type="text" id="repoUrl" list="historyList" placeholder="https://github.com/usuario/repo" />
     <datalist id="historyList"></datalist>
   </div>
 
-  <!-- Branch, extensões e token -->
   <div class="form-row">
     <div class="field">
       <label for="branch">Branch</label>
@@ -395,25 +390,26 @@
     </div>
   </div>
 
-  <!-- Botões principais -->
   <div class="btn-group">
     <button id="fetchBtn" onclick="fetchRepo()">📂 Listar arquivos</button>
     <button id="fullContentBtn" onclick="fetchFullContent()">📄 Ver código completo</button>
     <button id="downloadBtn" onclick="downloadProject()">📥 Baixar projeto</button>
     <button class="secondary" onclick="clearAll()">🗑️ Limpar</button>
+    <button id="cancelBtn" onclick="cancelOperation()">⛔ Cancelar</button>
   </div>
 
   <div id="status"></div>
 
-  <!-- Progresso com checklist e barra -->
+  <div id="progressWrapper">
+    <progress id="progressBar" value="0" max="100"></progress>
+    <span id="progressPercent">0%</span>
+  </div>
+
   <div id="progressContainer">
     <h4>📋 Progresso do processamento</h4>
     <ul id="progressList"></ul>
-    <progress id="progressBar" value="0" max="100"></progress>
-    <button id="cancelBtn" style="display:none;" onclick="cancelOperation()">❌ Cancelar</button>
   </div>
 
-  <!-- Árvore de arquivos com checkboxes -->
   <div id="fileTreeContainer" style="display:none;">
     <div class="tree-actions">
       <button onclick="selectAllFiles(true)">✅ Selecionar todos</button>
@@ -423,7 +419,6 @@
     <div id="fileTree"></div>
   </div>
 
-  <!-- Textarea para exibição do conteúdo -->
   <textarea id="output" placeholder="Os códigos aparecerão aqui..."></textarea>
   <div class="btn-group">
     <button onclick="copyAll()">📋 Copiar tudo</button>
@@ -431,7 +426,7 @@
 
   <script>
     (function() {
-      // ===== TEMA =====
+      // Tema
       const toggle = document.getElementById('themeToggle');
       const currentTheme = localStorage.getItem('theme') || 'light';
       document.body.classList.toggle('dark', currentTheme === 'dark');
@@ -442,7 +437,7 @@
         toggle.textContent = isDark ? '☀️' : '🌙';
       });
 
-      // ===== HISTÓRICO =====
+      // Histórico
       function loadHistory() {
         try {
           const h = JSON.parse(localStorage.getItem('repoHistory') || '[]');
@@ -463,7 +458,7 @@
       }
       updateDatalist(loadHistory());
 
-      // ===== CACHE =====
+      // Cache
       function getCacheKey(owner, repo, branch, extensions) {
         return `repo_cache_${owner}_${repo}_${branch}_${extensions.sort().join(',')}`;
       }
@@ -472,7 +467,7 @@
           const item = localStorage.getItem(key);
           if (!item) return null;
           const { data, timestamp } = JSON.parse(item);
-          if (Date.now() - timestamp > 5 * 60 * 1000) { // 5 min
+          if (Date.now() - timestamp > 5 * 60 * 1000) {
             localStorage.removeItem(key);
             return null;
           }
@@ -483,7 +478,7 @@
         localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
       }
 
-      // ===== UTILITÁRIOS =====
+      // Utilitários
       function parseGitHubUrl(url) {
         const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/([^\/]+))?(?:\/(.*))?/);
         if (!match) throw new Error('URL inválida. Use o formato: https://github.com/usuario/repo');
@@ -495,9 +490,8 @@
         };
       }
 
-      function getStatusEl() { return document.getElementById('status'); }
       function setStatus(msg, type = 'info') {
-        const el = getStatusEl();
+        const el = document.getElementById('status');
         el.className = type;
         el.innerHTML = msg;
       }
@@ -513,23 +507,36 @@
         btn.innerHTML = originalText;
       }
 
-      // ===== PROGRESS CHECKLIST E BARRA =====
-      let currentAbortController = null;
+      // AbortController
+      let currentController = null;
+      let isCancelled = false;
 
-      function showProgress() {
-        const container = document.getElementById('progressContainer');
-        container.style.display = 'block';
-        document.getElementById('progressList').innerHTML = '';
-        const bar = document.getElementById('progressBar');
-        bar.style.display = 'block';
-        bar.value = 0;
-        document.getElementById('cancelBtn').style.display = 'inline-block';
-        currentAbortController = new AbortController();
+      function showCancelButton() {
+        document.getElementById('cancelBtn').style.display = 'inline-flex';
       }
-      function updateProgress(loaded, total) {
-        const percent = total > 0 ? (loaded / total) * 100 : 0;
-        document.getElementById('progressBar').value = percent;
-        document.getElementById('progressBar').textContent = `${Math.round(percent)}%`;
+      function hideCancelButton() {
+        document.getElementById('cancelBtn').style.display = 'none';
+      }
+      window.cancelOperation = function() {
+        if (currentController) {
+          currentController.abort();
+          isCancelled = true;
+          setStatus('⛔ Operação cancelada pelo utilizador.', 'error');
+        }
+      };
+
+      // Progresso
+      function showProgress() {
+        document.getElementById('progressWrapper').style.display = 'block';
+        document.getElementById('progressContainer').style.display = 'block';
+        document.getElementById('progressList').innerHTML = '';
+        document.getElementById('progressBar').value = 0;
+        document.getElementById('progressPercent').textContent = '0%';
+      }
+      function updateProgress(current, total) {
+        const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+        document.getElementById('progressBar').value = pct;
+        document.getElementById('progressPercent').textContent = pct + '%';
       }
       function addProgressItem(filePath, status = 'success', errorMsg = '') {
         const list = document.getElementById('progressList');
@@ -537,38 +544,23 @@
         if (status === 'success') {
           li.innerHTML = `<span class="check">✔️</span> ${filePath}`;
         } else {
-          li.innerHTML = `<span class="error">❌</span> ${filePath} — ${errorMsg}`;
           li.style.color = 'var(--error-color)';
+          li.innerHTML = `<span class="error">❌</span> ${filePath} — ${errorMsg}`;
         }
         list.appendChild(li);
         const container = document.getElementById('progressContainer');
         container.scrollTop = container.scrollHeight;
       }
       function hideProgress() {
+        document.getElementById('progressWrapper').style.display = 'none';
         document.getElementById('progressContainer').style.display = 'none';
-        document.getElementById('progressBar').style.display = 'none';
-        document.getElementById('cancelBtn').style.display = 'none';
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
-      }
-      function cancelOperation() {
-        if (currentAbortController) {
-          currentAbortController.abort();
-          setStatus('⏹️ Operação cancelada pelo utilizador.', 'error');
-          hideProgress();
-          // Reativar botões
-          resetButton('fullContentBtn', '📄 Ver código completo');
-          resetButton('downloadBtn', '📥 Baixar projeto');
-        }
+        hideCancelButton();
       }
 
-      // ===== VARIÁVEIS GLOBAIS =====
       let currentFiles = [];
 
-      // ===== FUNÇÃO PARA LISTAR ARQUIVOS (recursivo com paginação) =====
-      async function fetchRepo() {
+      // Listar via backend
+      window.fetchRepo = async function() {
         const urlInput = document.getElementById('repoUrl').value.trim();
         if (!urlInput) { setStatus('⚠️ Insira uma URL.', 'error'); return; }
 
@@ -597,52 +589,32 @@
         setStatus('⏳ Obtendo lista de arquivos...', 'info');
 
         try {
-          const allFiles = await listRepoFiles(parsed.owner, parsed.repo, branch, parsed.path, token);
-          let filtered = allFiles;
-          if (extensions.length > 0) {
-            filtered = allFiles.filter(f => extensions.some(ext => f.path.endsWith(ext)));
+          const response = await fetch('/api/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repoUrl: urlInput, branch, extensions, token })
+          });
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || `Erro ${response.status}`);
           }
-          currentFiles = filtered;
-          setCached(cacheKey, filtered);
+          const data = await response.json();
+          currentFiles = data.files || [];
+          setCached(cacheKey, currentFiles);
           renderFileTree(currentFiles);
           document.getElementById('fileTreeContainer').style.display = 'block';
           setStatus(`✅ ${currentFiles.length} arquivos encontrados.`, 'success');
         } catch (err) {
-          setStatus(`❌ Erro: ${err.message}`, 'error');
+          if (err.name === 'AbortError') {
+            setStatus('⛔ Operação cancelada.', 'error');
+          } else {
+            setStatus(`❌ Erro: ${err.message}`, 'error');
+          }
         } finally {
           resetButton('fetchBtn', '📂 Listar arquivos');
         }
-      }
+      };
 
-      // ===== LISTAR ARQUIVOS VIA API DO GITHUB =====
-      async function listRepoFiles(owner, repo, branch, path = '', token = '') {
-        const baseUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        const params = new URLSearchParams({ ref: branch });
-        const url = `${baseUrl}?${params}`;
-        const headers = { 'Accept': 'application/vnd.github.v3+json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-          if (response.status === 404) throw new Error('Repositório ou caminho não encontrado.');
-          if (response.status === 403) throw new Error('Limite de API excedido. Use um token ou aguarde.');
-          if (response.status === 401) throw new Error('Token inválido ou sem permissão.');
-          throw new Error(`Erro ${response.status}: ${response.statusText}`);
-        }
-        const data = await response.json();
-        let files = [];
-        for (const item of data) {
-          if (item.type === 'file') {
-            files.push({ path: item.path, sha: item.sha, size: item.size, type: 'file' });
-          } else if (item.type === 'dir') {
-            const subFiles = await listRepoFiles(owner, repo, branch, item.path, token);
-            files = files.concat(subFiles);
-          }
-        }
-        return files;
-      }
-
-      // ===== RENDERIZAR ÁRVORE COM CHECKBOXES =====
       function renderFileTree(files) {
         const container = document.getElementById('fileTree');
         container.innerHTML = '';
@@ -718,18 +690,33 @@
         document.getElementById('fileCount').textContent = `${checked.length} / ${checkboxes.length} arquivos selecionados`;
       }
 
-      function selectAllFiles(select) {
+      window.selectAllFiles = function(select) {
         document.querySelectorAll('.file-checkbox').forEach(cb => cb.checked = select);
         updateFileCount();
-      }
+      };
 
       function getSelectedPaths() {
         const checkboxes = document.querySelectorAll('.file-checkbox:checked');
         return Array.from(checkboxes).map(cb => cb.dataset.path);
       }
 
-      // ===== BUSCAR CONTEÚDO COMPLETO (tolerante a falhas) =====
-      async function fetchFullContent() {
+      // Buscar conteúdo via backend
+      async function getFileContentViaBackend(owner, repo, branch, path, token, signal) {
+        const response = await fetch('/api/get-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner, repo, branch, path, token }),
+          signal
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || `HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        return data.content;
+      }
+
+      window.fetchFullContent = async function() {
         const urlInput = document.getElementById('repoUrl').value.trim();
         if (!urlInput) { setStatus('⚠️ Insira uma URL.', 'error'); return; }
         let parsed;
@@ -737,7 +724,7 @@
         catch (e) { setStatus(`❌ ${e.message}`, 'error'); return; }
 
         if (currentFiles.length === 0) {
-          await fetchRepo();
+          await window.fetchRepo();
           if (currentFiles.length === 0) {
             setStatus('❌ Nenhum arquivo disponível.', 'error');
             return;
@@ -757,59 +744,46 @@
         const output = document.getElementById('output');
         output.value = '';
 
-        showProgress();
-        updateProgress(0, selected.length);
+        if (currentController) currentController.abort();
+        currentController = new AbortController();
+        isCancelled = false;
+        showCancelButton();
 
+        showProgress();
         let fullContent = '';
-        let loaded = 0;
-        let errors = 0;
+        let loaded = 0, errors = 0;
 
         for (const path of selected) {
+          if (isCancelled) break;
           try {
-            const content = await getFileContent(parsed.owner, parsed.repo, branch, path, token, currentAbortController?.signal);
+            const content = await getFileContentViaBackend(parsed.owner, parsed.repo, branch, path, token, currentController.signal);
             fullContent += `===== ${path} =====\n${content}\n\n`;
             addProgressItem(path, 'success');
           } catch (err) {
             if (err.name === 'AbortError') {
-              setStatus('⏹️ Operação cancelada.', 'error');
-              return;
+              setStatus('⛔ Operação cancelada.', 'error');
+              break;
             }
             errors++;
-            const errorMsg = err.message || 'Erro desconhecido';
-            addProgressItem(path, 'error', errorMsg);
-            fullContent += `===== ${path} =====\n[ERRO] ${errorMsg}\n\n`;
+            const msg = err.message || 'Erro desconhecido';
+            addProgressItem(path, 'error', msg);
+            fullContent += `===== ${path} =====\n[ERRO] ${msg}\n\n`;
           }
           loaded++;
           updateProgress(loaded, selected.length);
           setStatus(`⏳ Processando ${loaded}/${selected.length} (${errors} erros)`, 'info');
         }
 
-        output.value = fullContent;
-        setStatus(`✅ ${selected.length} arquivos processados (${errors} falhas).`, errors > 0 ? 'error' : 'success');
+        if (!isCancelled) {
+          output.value = fullContent;
+          setStatus(`✅ ${selected.length} arquivos processados (${errors} falhas).`, errors > 0 ? 'error' : 'success');
+        }
         resetButton('fullContentBtn', '📄 Ver código completo');
-        hideProgress();
-      }
+        hideCancelButton();
+        currentController = null;
+      };
 
-      // ===== OBTER CONTEÚDO DE UM ARQUIVO (com suporte a cancelamento) =====
-      async function getFileContent(owner, repo, branch, path, token = '', signal = null) {
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
-        const headers = { 'Accept': 'application/vnd.github.v3+json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(url, { headers, signal });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} — ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (data.encoding === 'base64') {
-          return atob(data.content);
-        } else {
-          return data.content || '';
-        }
-      }
-
-      // ===== DOWNLOAD DO PROJETO (tolerante a falhas) =====
-      async function downloadProject() {
+      window.downloadProject = async function() {
         const urlInput = document.getElementById('repoUrl').value.trim();
         if (!urlInput) { setStatus('⚠️ Insira uma URL.', 'error'); return; }
         let parsed;
@@ -817,7 +791,7 @@
         catch (e) { setStatus(`❌ ${e.message}`, 'error'); return; }
 
         if (currentFiles.length === 0) {
-          await fetchRepo();
+          await window.fetchRepo();
           if (currentFiles.length === 0) {
             setStatus('❌ Nenhum arquivo disponível.', 'error');
             return;
@@ -835,55 +809,65 @@
         const btn = setLoading('downloadBtn', 'A preparar...');
         setStatus(`⏳ Preparando download de ${selected.length} arquivos...`, 'info');
 
-        showProgress();
-        updateProgress(0, selected.length);
+        if (currentController) currentController.abort();
+        currentController = new AbortController();
+        isCancelled = false;
+        showCancelButton();
 
+        showProgress();
         let fullText = '';
-        let loaded = 0;
-        let errors = 0;
+        let loaded = 0, errors = 0;
 
         for (const path of selected) {
+          if (isCancelled) break;
           try {
-            const content = await getFileContent(parsed.owner, parsed.repo, branch, path, token, currentAbortController?.signal);
+            const content = await getFileContentViaBackend(parsed.owner, parsed.repo, branch, path, token, currentController.signal);
             fullText += `===== ${path} =====\n${content}\n\n`;
             addProgressItem(path, 'success');
           } catch (err) {
             if (err.name === 'AbortError') {
-              setStatus('⏹️ Download cancelado.', 'error');
-              return;
+              setStatus('⛔ Operação cancelada.', 'error');
+              break;
             }
             errors++;
-            const errorMsg = err.message || 'Erro desconhecido';
-            addProgressItem(path, 'error', errorMsg);
-            fullText += `===== ${path} =====\n[ERRO] ${errorMsg}\n\n`;
+            const msg = err.message || 'Erro desconhecido';
+            addProgressItem(path, 'error', msg);
+            fullText += `===== ${path} =====\n[ERRO] ${msg}\n\n`;
           }
           loaded++;
           updateProgress(loaded, selected.length);
           setStatus(`⏳ Processando ${loaded}/${selected.length} (${errors} erros)`, 'info');
         }
 
-        // Criar blob e baixar
-        const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        const repoName = parsed.repo;
-        link.download = `${repoName}-concatenado.txt`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-        setStatus(`✅ Download iniciado! (${selected.length} arquivos, ${errors} falhas)`, errors > 0 ? 'error' : 'success');
+        if (!isCancelled && fullText) {
+          const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          const repoName = parsed.repo;
+          link.download = `${repoName}-concatenado.txt`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+          setStatus(`✅ Download iniciado! (${selected.length} arquivos, ${errors} falhas)`, errors > 0 ? 'error' : 'success');
+        } else if (isCancelled) {
+          setStatus('⛔ Download cancelado.', 'error');
+        }
         resetButton('downloadBtn', '📥 Baixar projeto');
-        hideProgress();
-      }
+        hideCancelButton();
+        currentController = null;
+      };
 
-      // ===== LIMPAR =====
-      function clearAll() {
+      window.clearAll = function() {
         document.getElementById('output').value = '';
         setStatus('🧹 Limpo.', 'info');
         hideProgress();
-      }
+        if (currentController) {
+          currentController.abort();
+          currentController = null;
+        }
+        hideCancelButton();
+      };
 
-      // ===== COPIAR =====
-      function copyAll() {
+      window.copyAll = function() {
         const output = document.getElementById('output');
         if (!output.value) { setStatus('⚠️ Nada para copiar.', 'error'); return; }
         output.select();
@@ -893,16 +877,7 @@
           document.execCommand('copy');
           setStatus('✅ Copiado!', 'success');
         });
-      }
-
-      // ===== EXPOR FUNÇÕES GLOBAIS =====
-      window.fetchRepo = fetchRepo;
-      window.fetchFullContent = fetchFullContent;
-      window.downloadProject = downloadProject;
-      window.clearAll = clearAll;
-      window.copyAll = copyAll;
-      window.selectAllFiles = selectAllFiles;
-      window.cancelOperation = cancelOperation;
+      };
     })();
   </script>
 </body>

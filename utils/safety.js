@@ -1,63 +1,54 @@
-/**
- * Safety checks melhorados
- */
-
 export function runSafetyChecks(files, existingPaths = []) {
   const errors = [];
   const warnings = [];
 
-  for (const file of files) {
-    const content = file.newContent || '';
-    const path = file.path || '';
+  // Padrões perigosos adicionais
+  const forbiddenPatterns = [
+    /child_process/,
+    /fs\./,
+    /require\s*\(/,
+    /import\s*\(/,
+    /eval\s*\(/,
+    /Function\s*\(/,
+    /process\.env/,
+    /__dirname/,
+    /__filename/,
+    /exec\s*\(/,
+    /spawn\s*\(/
+  ];
 
-    // 1. Deteção de segredos hardcoded
-    const secrets = detectHardcodedSecrets(content);
+  for (const file of files) {
+    // 1. Verificar padrões proibidos
+    for (const pattern of forbiddenPatterns) {
+      if (pattern.test(file.newContent)) {
+        errors.push({
+          file: file.path,
+          message: `Padrão perigoso detectado: ${pattern.source}`,
+          type: 'security'
+        });
+      }
+    }
+
+    // 2. Deteção de segredos hardcoded
+    const secrets = detectHardcodedSecrets(file.newContent);
     for (const secret of secrets) {
       warnings.push({
-        file: path,
+        file: file.path,
         message: `Possível segredo hardcoded: ${secret}`,
         type: 'security'
       });
     }
 
-    // 2. Deteção de padrões perigosos (eval, child_process, fs, etc.)
-    const dangerous = detectDangerousPatterns(content);
-    for (const pattern of dangerous) {
-      errors.push({
-        file: path,
-        message: `Uso de padrão perigoso: ${pattern}`,
-        type: 'security'
-      });
-    }
-
-    // 3. Verificação de imports relativos inválidos (apenas aviso)
-    if (/\.(js|ts|jsx|tsx)$/.test(path)) {
-      const invalidImports = detectInvalidImports(content, existingPaths);
+    // 3. Verificação de imports relativos inválidos
+    if (['.js', '.ts', '.jsx', '.tsx'].some(ext => file.path.endsWith(ext))) {
+      const invalidImports = detectInvalidImports(file.newContent, existingPaths);
       for (const imp of invalidImports) {
         warnings.push({
-          file: path,
+          file: file.path,
           message: `Import '${imp}' pode não existir no projeto.`,
           type: 'import'
         });
       }
-    }
-
-    // 4. Verificação de tamanho excessivo (evitar DoS)
-    if (content.length > 100000) {
-      warnings.push({
-        file: path,
-        message: `Ficheiro muito grande (${content.length} caracteres). Pode causar lentidão.`,
-        type: 'performance'
-      });
-    }
-
-    // 5. Deteção de path traversal (ex: "../../../etc/passwd")
-    if (/\.\.\/\.\.\//.test(content)) {
-      errors.push({
-        file: path,
-        message: 'Possível path traversal (../) detectado.',
-        type: 'security'
-      });
     }
   }
 
@@ -70,34 +61,14 @@ function detectHardcodedSecrets(content) {
     /Bearer\s+["'][^"']+["']/gi,
     /sk-[a-zA-Z0-9]{20,}/g,
     /ghp_[a-zA-Z0-9]{30,}/g,
-    /AIza[0-9A-Za-z-_]{35}/g // Google API key
+    /gho_[a-zA-Z0-9]{30,}/g,
+    /ghs_[a-zA-Z0-9]{30,}/g
   ];
   const found = [];
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
       found.push(match[0].substring(0, 40) + '...');
-    }
-  }
-  return found;
-}
-
-function detectDangerousPatterns(content) {
-  const patterns = [
-    /\beval\s*\(/,
-    /\bnew\s+Function\s*\(/,
-    /\bchild_process\b/,
-    /\brequire\s*\(\s*['"]child_process['"]\s*\)/,
-    /\bexec\s*\(/,
-    /\bspawn\s*\(/,
-    /\bprocess\.exit\s*\(/,
-    /\bfs\.(readFile|writeFile|unlink|rmdir|mkdir)/,
-    /\b__dirname\b.*\.\.\// // possível path traversal
-  ];
-  const found = [];
-  for (const pattern of patterns) {
-    if (pattern.test(content)) {
-      found.push(pattern.toString());
     }
   }
   return found;
